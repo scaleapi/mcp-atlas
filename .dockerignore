@@ -1,0 +1,25 @@
+# Version control (root only)
+/.git
+/.gitignore
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Ruff
+.ruff_cache
+
+.DS_Store
+
+# Environment files - use --env-file instead
+.env
+.env.*
+
+data.zip

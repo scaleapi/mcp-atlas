@@ -1,0 +1,327 @@
+================================================================================
+Single-file small change
+================================================================================
+diff --git a/grammar.js b/grammar.js
+index dc36969..f37fde0 100644
+--- a/grammar.js
++++ b/grammar.js
+@@ -6,6 +6,8 @@ module.exports = grammar({
+   extras: ($) => [],
+ 
+   rules: {
+-    source: ($) => "hello",
++    source: ($) => repeat($._line),
++
++    _line: ($) => choice(),
+   },
+ });
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (index
+      (commit)
+      (commit)
+      (mode))
+    (old_file
+      (filename))
+    (new_file
+      (filename))
+    (hunks
+      (hunk
+        (location
+          (linerange)
+          (linerange))
+        (changes
+          (context)
+          (context)
+          (deletion)
+          (addition)
+          (addition)
+          (addition)
+          (context)
+          (context))))))
+
+================================================================================
+New empty file
+================================================================================
+diff --git a/tmp.txt b/tmp.txt
+new file mode 100644
+index 0000000..e69de29
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (file_change
+      (mode))
+    (index
+      (commit)
+      (commit))))
+
+================================================================================
+Deleted empty file
+================================================================================
+diff --git a/tmp.txt b/tmp.txt
+deleted file mode 100644
+index e69de29..0000000
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (file_change
+      (mode))
+    (index
+      (commit)
+      (commit))))
+
+================================================================================
+File rename
+================================================================================
+diff --git a/tmp.txt b/tmp.md
+similarity index 100%
+rename from tmp.txt
+rename to tmp.md
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (similarity
+      (score))
+    (file_change
+      (filename))
+    (file_change
+      (filename))))
+
+================================================================================
+Location with no context
+================================================================================
+@@ -0,0 +1 @@
+
+--------------------------------------------------------------------------------
+
+(source
+  (location
+    (linerange)
+    (linerange)))
+
+================================================================================
+No newline at end of file
+================================================================================
+diff --git a/tmp.txt b/tmp.txt
+new file mode 100644
+index 00000000..ee9808dc
+--- /dev/null
++++ b/tmp.txt
+@@ -0,0 +1 @@
++aaa
+\ No newline at end of file
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (file_change
+      (mode))
+    (index
+      (commit)
+      (commit))
+    (old_file
+      (filename))
+    (new_file
+      (filename))
+    (hunks
+      (hunk
+        (location
+          (linerange)
+          (linerange))
+        (changes
+          (addition)
+          (context))))))
+
+================================================================================
+Just a file declaration and no newline
+================================================================================
+--- /dev/null
+--------------------------------------------------------------------------------
+
+(source
+  (old_file
+    (filename)))
+
+================================================================================
+location tokens in diff
+================================================================================
+diff --git a/runtime/queries/elixir/highlights.scm b/runtime/queries/elixir/highlights.scm
+index 76fd2af..308ff34 100644
+--- a/runtime/queries/elixir/highlights.scm
++++ b/runtime/queries/elixir/highlights.scm
+@@ -125,7 +125,8 @@
+ (sigil
+   (sigil_name) @__name__
+   quoted_start: _ @string.special
+-  quoted_end: _ @string.special) @string.special
++  quoted_end: _ @string.special
++  (#not-eq? @__name__ "H")) @string.special
+ 
+ ; Calls
+ 
+diff --git a/runtime/queries/elixir/injections.scm b/runtime/queries/elixir/injections.scm
+index 321c90a..b4a5cba 100644
+--- a/runtime/queries/elixir/injections.scm
++++ b/runtime/queries/elixir/injections.scm
+@@ -1,2 +1,8 @@
+ ((comment) @injection.content
+  (#set! injection.language "comment"))
++
++((sigil
++  (sigil_name) @_sigil_name
++  (quoted_content) @injection.content)
++ (#eq? @_sigil_name "H")
++ (#set! injection.language "heex"))
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (index
+      (commit)
+      (commit)
+      (mode))
+    (old_file
+      (filename))
+    (new_file
+      (filename))
+    (hunks
+      (hunk
+        (location
+          (linerange)
+          (linerange))
+        (changes
+          (context)
+          (context)
+          (context)
+          (deletion)
+          (addition)
+          (addition)
+          (context)))))
+  (block
+    (command
+      (argument)
+      (filename))
+    (index
+      (commit)
+      (commit)
+      (mode))
+    (old_file
+      (filename))
+    (new_file
+      (filename))
+    (hunks
+      (hunk
+        (location
+          (linerange)
+          (linerange))
+        (changes
+          (context)
+          (context)
+          (addition)
+          (addition)
+          (addition)
+          (addition)
+          (addition)
+          (addition))))))
+
+================================================================================
+Leading dash deletions
+================================================================================
+--123
+---
+----1234
+-----1234
+
+--------------------------------------------------------------------------------
+
+(source
+  (deletion)
+  (deletion)
+  (deletion)
+  (deletion))
+
+================================================================================
+Leading plus additions
+================================================================================
+++123
+++
+++++1234
++++++1234
+
+--------------------------------------------------------------------------------
+
+(source
+  (addition)
+  (addition)
+  (addition)
+  (addition))
+
+================================================================================
+File mode changes
+================================================================================
+diff --git a/LICENSE b/LICENSE
+old mode 100644
+new mode 100755
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (file_change
+      (mode))
+    (file_change
+      (mode))))
+
+================================================================================
+Comments
+================================================================================
+# Some comment
+ # This is not a comment
+# But this is
+ context
+# Empty comment
+#
+ more contex
+
+--------------------------------------------------------------------------------
+
+(source
+  (comment)
+  (context)
+  (comment)
+  (context)
+  (comment)
+  (comment)
+  (context))

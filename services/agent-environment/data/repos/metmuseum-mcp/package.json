@@ -1,0 +1,56 @@
+{
+  "name": "metmuseum-mcp",
+  "type": "module",
+  "version": "0.9.2",
+  "private": false,
+  "description": "A Model Context Protocol (MCP) server that provides access to the Metropolitan Museum of Art Collection through natural language interactions. This server allows AI models to search The Met's art collection and have art works available as a Resource.",
+  "author": "mike.chao.one@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.com/mikechao/metmuseum-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikechao/metmuseum-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikechao/metmuseum-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "the-met",
+    "metropolitan-museum-of-art",
+    "art",
+    "museum"
+  ],
+  "main": "dist/index.js",
+  "bin": {
+    "metmuseum-mcp": "dist/index.js"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run check && npm run build",
+    "lint": "eslint . --ext .ts,.js,.mjs,.cjs --fix",
+    "lint:check": "eslint . --ext .ts,.js,.mjs,.cjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint:check && npm run typecheck"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "image-to-base64": "^2.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.11.0",
+    "@types/image-to-base64": "^2.1.2",
+    "@types/node": "^22.14.0",
+    "eslint": "^9.23.0",
+    "eslint-plugin-format": "^1.0.1",
+    "shx": "^0.4.0",
+    "typescript": "^5.8.3"
+  }
+}

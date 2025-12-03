@@ -1,0 +1,17 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^README.*$
+^\.travis\.yml$
+^slackr\.png$
+^cran-comments\.md$
+.channel_cache
+logo.svg
+inst/secrets
+^codecov\.yml$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^CRAN-RELEASE$
+^LICENSE\.md$
+test_config

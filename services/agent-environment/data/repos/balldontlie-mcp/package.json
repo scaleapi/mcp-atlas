@@ -1,0 +1,57 @@
+{
+  "name": "balldontlie-mcp",
+  "type": "module",
+  "version": "0.6.0",
+  "private": false,
+  "description": "An MCP Server implementation that integrates the Balldontlie API, to provide information about players, teams and games for the NBA, NFL and MLB",
+  "author": "mike.chao.one@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.com/mikechao/balldontlie-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikechao/balldontlie-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikechao/balldontlie-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "balldontlie",
+    "nba",
+    "nfl",
+    "mlb",
+    "sports"
+  ],
+  "main": "dist/index.js",
+  "bin": {
+    "balldontlie-mcp": "dist/index.js"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "clean": "shx rm -rf dist && shx mkdir dist",
+    "build": "npm run clean && tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "lint": "eslint . --ext .ts,.js,.mjs,.cjs --fix",
+    "lint:check": "eslint . --ext .ts,.js,.mjs,.cjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint:check && npm run typecheck"
+  },
+  "dependencies": {
+    "@balldontlie/sdk": "^1.2.2",
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.11.0",
+    "@types/node": "^22.14.0",
+    "eslint": "^9.23.0",
+    "eslint-plugin-format": "^1.0.1",
+    "shx": "^0.4.0",
+    "typescript": "^5.8.3"
+  }
+}

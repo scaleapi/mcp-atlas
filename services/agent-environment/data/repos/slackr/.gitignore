@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.Rproj
+.channel_cache
+.DS_Store
+src/*.o
+src/*.so
+src/*.dll
+.channel_cache
+tests/testthat/.config
+docs
+.config
+.slackr
+test_config
+.Rprofile

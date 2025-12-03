@@ -1,0 +1,175 @@
+{
+  "voices": {
+    "3058b1b3-6a9e-4e59-8332-3899f846a2d6": {
+      "id": "3058b1b3-6a9e-4e59-8332-3899f846a2d6",
+      "name": "Beatriz",
+      "gender": "F",
+      "tags": ["portuguese-accent"],
+      "imageUrl": "https://api.lmnt.com/img/voice/beatriz.webp",
+      "state": "ready",
+      "description": "Beatriz's voice possesses a distinctive Portuguese accent, infusing her speech with the warm, rhythmic cadence of her native language. As a middle-aged woman, her voice carries a depth and maturity that adds an air of wisdom and experience to her conversations."
+    },
+    "curtis": {
+      "id": "curtis",
+      "name": "Curtis",
+      "gender": "M",
+      "tags": ["middle-aged"],
+      "imageUrl": "https://api.lmnt.com/img/voice/curtis.webp",
+      "state": "ready",
+      "description": "Curtis' voice carries the seasoned timbre of middle age, filled with warmth, curiosity, and a hint of wisdom gained over the years. His enthusiastic tone reflects his keen interest in the world, often rising and falling with the ebb and flow of exciting new discoveries."
+    },
+    "dalton": {
+      "id": "dalton",
+      "name": "Dalton",
+      "gender": "M",
+      "tags": ["southern-drawl"],
+      "imageUrl": "https://api.lmnt.com/img/voice/dalton.webp",
+      "state": "ready",
+      "description": "Dalton's voice is marked by a distinctive southern-drawl, stretching out his vowels in a slow, languid manner that evokes images of lazy afternoons in the Deep South. His speech is charming and soothing, filled with a warmth that is characteristic of his southern roots."
+    },
+    "7a9c1584-66a7-4667-b055-dc551d9556c2": {
+      "id": "7a9c1584-66a7-4667-b055-dc551d9556c2",
+      "name": "Donna",
+      "gender": "F",
+      "tags": ["middle-aged"],
+      "imageUrl": "https://api.lmnt.com/img/voice/donna.webp",
+      "state": "ready",
+      "description": "Donna's middle-aged, deliberate voice carries an authoritative warmth that captures attention but never overpowers. Her carefully-chosen words are spoken with a slow, controlled cadence, each syllable rich with experience and the wisdom of the years."
+    },
+    "4e584062-ad8d-4cde-a9df-8f9743046a3d": {
+      "id": "4e584062-ad8d-4cde-a9df-8f9743046a3d",
+      "name": "Eleanor",
+      "gender": "F",
+      "tags": ["old-timey"],
+      "imageUrl": "https://api.lmnt.com/img/voice/eleanor.webp",
+      "state": "ready",
+      "description": "Eleanor's voice is rich with the bygone days, brimming with a gentle and fetching old-world charm. Her occasional use of antiquated lingo, coupled with a soft, melodious cadence, is reminiscent of a vintage radio broadcast, inspiring nostalgia for a simpler time."
+    },
+    "471c04bc-0ee7-44c4-8d7d-15ee0db9d429": {
+      "id": "471c04bc-0ee7-44c4-8d7d-15ee0db9d429",
+      "name": "Ethel",
+      "gender": "F",
+      "tags": ["older"],
+      "imageUrl": "https://api.lmnt.com/img/voice/ethel.webp",
+      "state": "ready",
+      "description": "Ethel's voice carries the seasoned rasp of many years, flavored with a touch of grumpiness that often points to youngsters overstepping their boundaries. Her voice, like a cane held aloft in reprimand, has a predictable cantankerousness, especially when declaring the sanctity of her meticulously manicured lawn."
+    },
+    "abb4aea5-bc72-467d-82bb-c3169a528cde": {
+      "id": "abb4aea5-bc72-467d-82bb-c3169a528cde",
+      "name": "Giuseppe",
+      "gender": "M",
+      "tags": ["italian-accent"],
+      "imageUrl": "https://api.lmnt.com/img/voice/giuseppe.webp",
+      "state": "ready",
+      "description": "Giuseppe's voice is soaked with a distinct and enticing Italian-accent, dropping vowels and elongating syllables in a melodious, sing-song manner. His voice carries the warmth of his homeland, weaving together a vibrant tapestry of enthusiastic pitches and expressive intonations."
+    },
+    "034b632b-df71-46c8-b440-86a42ffc3cf3": {
+      "id": "034b632b-df71-46c8-b440-86a42ffc3cf3",
+      "name": "Henry",
+      "gender": "M",
+      "tags": ["old-timey-radio"],
+      "imageUrl": "https://api.lmnt.com/img/voice/henry.webp",
+      "state": "ready",
+      "description": "Henry's voice harkens back to the golden age of radio, with a grainy warmth reminiscent of stations of decades past. His rich, baritone tone is punctuated by the charmingly antiquated inflections and expressions so familiar to the old-timey radio era."
+    },
+    "c8ea4f2a-06e6-4d7b-9484-db941bf7c657": {
+      "id": "c8ea4f2a-06e6-4d7b-9484-db941bf7c657",
+      "name": "Joe",
+      "gender": "M",
+      "tags": ["middle-aged"],
+      "imageUrl": "https://api.lmnt.com/img/voice/joe.webp",
+      "state": "ready",
+      "description": "Joe's voice, warm and full-bodied with age, resonates with an inviting timbre that instills a sense of comfort and trust. It carries the kind of wisdom you would expect from a dedicated teacher or a dependable lifelong friend, always steadied with a touch of gentle authority."
+    },
+    "9db02220-4029-40f1-a807-55d645386d2b": {
+      "id": "9db02220-4029-40f1-a807-55d645386d2b",
+      "name": "Kathrine",
+      "gender": "F",
+      "tags": ["middle-aged"],
+      "imageUrl": "https://api.lmnt.com/img/voice/kathrine.webp",
+      "state": "ready",
+      "description": "Kathrine's voice carries an endearing mix of age-acquired wisdom and youthful vigor, enriched by the warm undertones of a middle-aged woman's timbre. Her intellectually-driven queries and insights reveal a certain sparkle of curiosity, resonating in her carefully modulated and intelligent tone."
+    },
+    "mrnmrz72": {
+      "id": "mrnmrz72",
+      "name": "Marzia",
+      "gender": "F",
+      "imageUrl": "https://api.lmnt.com/img/voice/marzia.webp",
+      "state": "ready",
+      "tags": ["italian-accent"],
+      "description": "Marzia's voice is delicately accented with the soft, melodic lilt of her Italian origin, imbuing her speech with an enchanting rhythm. Her tones come out warm and expressive, evoking her Mediterranean heritage and lending her words an added touch of charm and vivacity."
+    },
+    "maurice": {
+      "id": "maurice",
+      "name": "Maurice",
+      "gender": "M",
+      "tags": ["older"],
+      "imageUrl": "https://api.lmnt.com/img/voice/maurice.webp",
+      "state": "ready",
+      "description": "Maurice's voice is audibly aging, filled with richness that only comes with years of experience, reminiscent of a grandpa who has many tales to tell. There's a comforting timbre to it, warm and slightly gravelly, making you feel like you're wrapped in a loving embrace every time he speaks."
+    },
+    "e8d31f4e-e8af-4c72-9fc9-f4f6f535c6cc": {
+      "id": "e8d31f4e-e8af-4c72-9fc9-f4f6f535c6cc",
+      "name": "Natalie",
+      "gender": "F",
+      "tags": ["middle-aged"],
+      "imageUrl": "https://api.lmnt.com/img/voice/natalie.webp",
+      "state": "ready",
+      "description": "Natalie's voice, exhibiting the maturity of her middle age, lacks variation in pitch and rhythm; it sounds as though she's simply reciting words from a page. Despite her steady, somewhat monotonous tone, a subtle depth of knowledge and experience threads through every word she articulates."
+    },
+    "4e95c4a7-95aa-4b1d-bc23-00f7d1d484ea": {
+      "id": "4e95c4a7-95aa-4b1d-bc23-00f7d1d484ea",
+      "name": "Oliver",
+      "gender": "M",
+      "tags": ["middle-aged"],
+      "imageUrl": "https://api.lmnt.com/img/voice/oliver.webp",
+      "state": "ready",
+      "description": "Oliver's voice holds an engaging lilt, a middle-aged tone doused with the rhythmic timbre you'd expect from a seasoned carnival worker. His words rise and fall like a festive carousel ride, instantly drawing you into his lively, slightly eccentric world."
+    },
+    "olivia": {
+      "id": "olivia",
+      "name": "Olivia",
+      "gender": "F",
+      "tags": ["british-accent"],
+      "imageUrl": "https://api.lmnt.com/img/voice/olivia.webp",
+      "state": "ready",
+      "description": "Olivia's voice carries a distinct and captivating British accent, elegantly delivering crisp, clear English with a mix of sophistication and charm. Her tone is smooth and soothing, yet authoritative, displaying an enchanting blend of warmth and confidence."
+    },
+    "598edd09-4fb2-460c-9ad1-d9f8081079d3": {
+      "id": "598edd09-4fb2-460c-9ad1-d9f8081079d3",
+      "name": "Priya",
+      "gender": "F",
+      "tags": ["indian-accent"],
+      "imageUrl": "https://api.lmnt.com/img/voice/priya.webp",
+      "state": "ready",
+      "description": "Priya's voice carries the rich, melodious tones of her Indian heritage, often marked by a distinct, rhythmic accent that adds a profound depth to her communication. Her speech is warm and expressive, radiating the vibrant culture of her Indian roots."
+    },
+    "rbalogh": {
+      "id": "rbalogh",
+      "name": "Reba",
+      "gender": "F",
+      "imageUrl": "https://api.lmnt.com/img/voice/rbalogh.webp",
+      "state": "ready",
+      "tags": ["hungarian-accent"],
+      "description": "Reba's voice possesses a lush, melodious quality, laced with a distinctive Hungarian accent that adds to her unique charm. The nuances of her speech carry inflections and rhythms that reflect her Eastern European heritage, making her voice instantly recognizable and engaging."
+    },
+    "shanti": {
+      "id": "shanti",
+      "name": "Shanti",
+      "gender": "F",
+      "tags": ["indian-accent", "older"],
+      "imageUrl": "https://api.lmnt.com/img/voice/shanti.webp",
+      "state": "ready",
+      "description": "Shanti's voice carries the melodic lilt of an Indian accent, seasoned with age and tinged slightly nasal. Her speech, durable with time, draws a picture of wisdom and character."
+    },
+    "a904f97c-ff5f-4099-98c8-b5effe00c9a6": {
+      "id": "a904f97c-ff5f-4099-98c8-b5effe00c9a6",
+      "name": "Szymon",
+      "gender": "M",
+      "tags": ["polish-accent"],
+      "imageUrl": "https://api.lmnt.com/img/voice/szymon.webp",
+      "state": "ready",
+      "description": "Szymon's voice is layered with a distinctly Polish accent, making his consonants sharp and vowels warm, embellishing his speech in a captivating, melodic rhythm. The soft tones reflect the Slavic origin, adding a unique charm and depth to his narration and conversations."
+    }
+  }
+}

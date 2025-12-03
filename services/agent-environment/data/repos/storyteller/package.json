@@ -1,0 +1,59 @@
+{
+  "name": "storyteller",
+  "description": "StoryTeller: generate short audio stories for pre-school kids.",
+  "author": "Lars Grammel",
+  "license": "MIT",
+  "keywords": [
+    "modelfusion",
+    "multimodal",
+    "openai",
+    "whisper",
+    "ai"
+  ],
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "next": "next dev",
+    "fastify": "npx tsx src/storyteller/server.ts",
+    "build": "next build",
+    "lint": "next lint"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.4.0",
+    "@fastify/static": "^6.11.2",
+    "@radix-ui/react-aspect-ratio": "^1.0.3",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@types/node": "20.6.0",
+    "@types/react": "18.2.21",
+    "@types/react-dom": "18.2.7",
+    "autoprefixer": "10.4.15",
+    "bufferutil": "^4.0.8",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "eslint": "8.49.0",
+    "eslint-config-next": "13.4.19",
+    "eventsource-parser": "1.1.1",
+    "fastify": "^4.24.3",
+    "lucide-react": "^0.276.0",
+    "modelfusion": "0.131.0",
+    "modelfusion-experimental": "0.6.0",
+    "next": "13.5.6",
+    "postcss": "8.4.31",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwind-merge": "^1.14.0",
+    "tailwindcss": "3.3.3",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "5.2.2",
+    "utf-8-validate": "^6.0.3",
+    "zod": "3.22.4",
+    "zod-to-json-schema": "3.21.4"
+  },
+  "devDependencies": {
+    "dotenv": "16.0.3",
+    "tsx": "^3.12.8"
+  }
+}

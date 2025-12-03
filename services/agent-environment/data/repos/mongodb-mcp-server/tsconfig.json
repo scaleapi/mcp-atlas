@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": ["jest"],
+    "skipLibCheck": true
+  },
+  "include": ["**/*"]
+}

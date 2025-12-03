@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["jest", "jest-extended"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

@@ -1,0 +1,45 @@
+================================================================================
+Single-file small change
+================================================================================
+diff --git a/tree-sitter-gitdiff.wasm b/tree-sitter-gitdiff.wasm
+index 0e9e828..3e32290 100755
+Binary files a/tree-sitter-gitdiff.wasm and b/tree-sitter-gitdiff.wasm differ
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (index
+      (commit)
+      (commit)
+      (mode))
+    (binary_change
+      (filename)
+      (filename))))
+
+================================================================================
+Deleted binary file
+================================================================================
+diff --git a/docs/playground.png b/docs/playground.png
+deleted file mode 100644
+index 9cf2a44..0000000
+Binary files a/docs/playground.png and /dev/null differ
+
+--------------------------------------------------------------------------------
+
+(source
+  (block
+    (command
+      (argument)
+      (filename))
+    (file_change
+      (mode))
+    (index
+      (commit)
+      (commit))
+    (binary_change
+      (filename)
+      (filename))))

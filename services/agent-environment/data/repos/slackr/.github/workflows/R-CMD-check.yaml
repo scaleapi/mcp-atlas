@@ -1,0 +1,94 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  pull_request_target:
+    branches:
+      - master
+    types: [assigned, review_requested, opened]
+
+name: R-CMD-check
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    if: ${{ github.event_name == 'pull_request_target' || github.repository == 'mrkaye97/slackr' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,   r: 'release'}
+          - {os: ubuntu-latest,   r: 'oldrel-1'}
+
+    env:
+      R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
+      RSPM: ${{ matrix.config.rspm }}
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
+      SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+      SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+      SLACK_ICON_EMOJI: ${{ secrets.SLACK_ICON_EMOJI }}
+      SLACK_INCOMING_WEBHOOK_URL: ${{ secrets.SLACK_INCOMING_URL_PREFIX }}
+      SLACK_USERNAME: ${{ secrets.SLACK_USERNAME }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+
+      - uses: actions/checkout@v3
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Query dependencies
+        run: |
+          install.packages('remotes')
+          saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2)
+          writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
+        shell: Rscript {0}
+
+      - name: Restore R package cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
+          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y libcurl4 libcurl4-openssl-dev imagemagick libmagick++-6.q16-8
+          while read -r cmd
+          do
+            eval sudo $cmd
+          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "20.04"))')
+
+      - name: Install dependencies
+        run: |
+          remotes::install_deps(dependencies = TRUE)
+          install.packages("stringi", type="source")
+          install.packages("curl", type="source")
+          install.packages("xml2", type="source")
+          remotes::install_cran("devtools")
+          devtools::install_github("yonicd/texPreview")
+        shell: Rscript {0}
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
