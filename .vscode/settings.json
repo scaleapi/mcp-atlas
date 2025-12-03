@@ -1,0 +1,14 @@
+{
+    "python.interpreter.path": "./.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.defaultInterpreterPath": "./.venv/bin/python",
+    "search.useIgnoreFiles": false,
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/.git": true,
+        "**/.DS_Store": true,
+    },
+    "files.exclude": {
+        "**/.DS_Store": true,
+    }
+}
