@@ -23,8 +23,8 @@ Edit `.env` and set:
 **Option A: Use pre-built image (faster, recommended):**
 
 ```bash
-docker pull --platform linux/amd64 ghcr.io/scaleapi/mcp-atlas:1.2.0
-docker tag ghcr.io/scaleapi/mcp-atlas:1.2.0 agent-environment:latest
+docker pull --platform linux/amd64 ghcr.io/scaleapi/mcp-atlas:1.2.1
+docker tag ghcr.io/scaleapi/mcp-atlas:1.2.1 agent-environment:latest
 make run-docker
 ```
 
