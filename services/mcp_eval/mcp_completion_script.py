@@ -236,7 +236,10 @@ class AsyncMCPTrajectoryGenerator:
                 logging.error(f"Error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: {e}")
                 
             if attempt < MAX_RETRY_ATTEMPTS - 1:
-                await asyncio.sleep(10)
+                base_delay = min(10 * (2 ** attempt), 60)
+                delay = random.uniform(0, base_delay)  # Full jitter (AWS recommended)
+                logging.info(f"Retrying in {delay:.1f}s (attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS})")
+                await asyncio.sleep(delay)
         
         return None, MAX_RETRY_ATTEMPTS
 

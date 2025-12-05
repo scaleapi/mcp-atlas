@@ -24,7 +24,7 @@ class Config:
 
     # Timeout configuration
     DEFAULT_TIMEOUT: float = float(os.getenv("DEFAULT_TIMEOUT", "300.0"))
-    TOOL_CALL_TIMEOUT: float = float(os.getenv("TOOL_CALL_TIMEOUT", "30.0"))
+    TOOL_CALL_TIMEOUT: float = float(os.getenv("TOOL_CALL_TIMEOUT", "120.0"))
     LIST_TOOLS_TIMEOUT: float = float(os.getenv("LIST_TOOLS_TIMEOUT", "120.0"))
 
     # Logging configuration
