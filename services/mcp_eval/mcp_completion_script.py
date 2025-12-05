@@ -412,7 +412,7 @@ class AsyncMCPTrajectoryGenerator:
         # Create async tasks
         async_tasks = []
         for i, (original_idx, row_data) in enumerate(tasks_to_process):
-            task = controlled_task(row_data, original_idx)
+            task = controlled_task(row_data, i)
             async_tasks.append(task)
 
         # Execute all tasks concurrently

@@ -60,7 +60,7 @@ curl -X POST http://localhost:3000/v2/mcp_eval/run_agent \
     "messages": [{"role": "user", "content": "What is the square root of 95?"}],
     "enabledTools": ["calculator_calculate"],
     "maxTurns": 20
-  }'
+  }' | jq
 ```
 
 ### 5. Test with a sample of 10 tasks
@@ -90,7 +90,7 @@ Options:
 - `--output` - [required] Output CSV filename (saved to `completion_results/`)
 - `--no-filter` - Disable filtering by available MCP servers (runs all tasks regardless of missing API keys)
 - `--num-tasks` - Limit to first N tasks (useful for testing)
-- `--concurrency` - Maximum concurrent API requests (default: 10, range: 10-30)
+- `--concurrency` - Maximum concurrent API requests (default: 10, range: 5-20)
 
 Note: For these 10 tasks, they have more servers/tools in "ENABLED_TOOLS", but they are not required to get the correct answer (ground truth claims in "GTFA_CLAIMS"). At the time of creation of each task's prompt and trajectory, all the "ENABLED_TOOLS" were available to the LLM, but the ground truth was determined using only the servers in "TRAJECTORY". However, if you don't provide an API key then that mcp server won't start, and that server's tools will be unavailable to the LLM you're evaluating.
 
@@ -118,12 +118,12 @@ Outputs saved to `evaluation_results/`:
 
 ### 7. Add more API keys (strongly recommended)
 
-Approximately 27% of evaluation tasks work with the 25 default servers. To run more tasks, add API keys to your `.env` file (see `env.template` for setup instructions). Note that a task may require multiple mcp servers, and that task will be skipped if any of its required servers are unavailable. For example, google-workspace is used in 14% of tasks as part of the ground truth trajectory, and without that api key, you'll skip 14% of tasks. API-requiring mcp server usage:
+Approximately 18% of evaluation tasks work with the 25 default servers. To run more tasks, add API keys to your `.env` file (see `env.template` for setup instructions). Note that a task may require multiple mcp servers, and that task will be skipped if any of its required servers are unavailable. For example, exa is used in 13% of tasks as part of the ground truth trajectory, and without that api key, you'll skip 13% of tasks. API-requiring mcp server usage:
 
-- google-workspace: 14% | brave-search: 12% | balldontlie: 11% | twelvedata: 9%
-- notion: 8% | airtable: 6% | alchemy: 6% | google-maps: 6% | mongodb: 5%
-- exa: 5% | slack: 5% | oxylabs: 4% | youtube: 3% | lara-translate: 2%
-- national-parks: 2% | e2b-server: 2% | github: 1% | rijksmuseum-server: 1%
+- exa: 13% | airtable: 12% | mongodb: 12% | oxylabs: 11% | brave-search: 10%
+- alchemy: 8% | national-parks: 8% | twelvedata: 8% | lara-translate: 7%
+- notion: 6% | weather-data: 6% | github: 5% | slack: 5% | google-maps: 5%
+- e2b-server: 5% | google-workspace: 4%
 
 
 **Important:** Five servers require both API keys AND sample data to be uploaded to your account:
@@ -138,6 +138,8 @@ Approximately 27% of evaluation tasks work with the 25 default servers. To run m
 Note: Some services are paid and require billing setup. 
 
 **Note: When you add more API keys to `.env`, you need to restart the server in step 2.** On start, it'll automatically detect what API keys are available, and start those respective MCP servers. After it has restarted, confirm that all expected servers are online. If not online, try restarting the docker container, or check for error logs. `curl -s http://localhost:1984/enabled-servers | jq -c`
+
+If the docker container does not shut down gracefully, use `docker ps` and `docker kill <ID>` to force it to shut down.
 
 ### 8. Evaluate with the full HuggingFace dataset
 

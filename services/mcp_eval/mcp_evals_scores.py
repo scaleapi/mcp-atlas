@@ -703,6 +703,25 @@ def generate_statistics_and_plots(scored_csv_path: str, model_name: str, output_
 
         # --- Generate and save statistics ---
         stats_df = df["coverage_score"].describe().to_frame(name="value").reset_index().rename(columns={"index": "stat"})
+        
+        # Rename "mean" to "mean coverage score"
+        stats_df.loc[stats_df["stat"] == "mean", "stat"] = "mean coverage score"
+        
+        # Calculate pass rate (% of tasks where coverage_score >= 0.75)
+        valid_scores = df["coverage_score"].dropna()
+        pass_count = (valid_scores >= 0.75).sum()
+        total_count = len(valid_scores)
+        pass_rate = pass_count / total_count if total_count > 0 else 0.0
+        
+        # Insert pass rate row right after "mean coverage score"
+        mean_idx = stats_df[stats_df["stat"] == "mean coverage score"].index[0]
+        pass_rate_row = pd.DataFrame({"stat": ["pass rate"], "value": [pass_rate]})
+        stats_df = pd.concat([
+            stats_df.iloc[:mean_idx + 1],
+            pass_rate_row,
+            stats_df.iloc[mean_idx + 1:]
+        ]).reset_index(drop=True)
+        
         stats_path = os.path.join(output_dir, f"coverage_stats_{model_name}.csv")
         stats_df.to_csv(stats_path, index=False)
         logger.info(f"Saved summary statistics to '{stats_path}'")
