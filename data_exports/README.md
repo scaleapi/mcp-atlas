@@ -1,4 +1,4 @@
-# Data Exports for MCP Server Testing (for agent-environment)
+# Data Exports for MCP Server Testing
 
 This directory contains sample data that can be uploaded to various online services to create test environments that match the state used in existing test prompts and evaluations.
 
@@ -20,8 +20,7 @@ To reproduce test results or run evaluations against known data states, you'll n
 | Google Calendar | `calendar_mcp_eval_export.zip` | Sample calendar events (unzip as .ics) (8KB) |
 | Notion | `notion_mcp_eval_export.zip` | Sample pages and databases (13MB) |
 | MongoDB | `mongo_dump_video_game_store.zip` | Sample video game store database (unzip as folder) (486KB) |
-| Slack | `slack_mcp_eval_export_add100days.zip` | Sample workspace data (27KB) events timestamped for early Oct 2025 |
-| Slack | `slack_mcp_eval_export.zip` | Sample workspace data (27KB) events from late June 2025 (past 90 day window for free slack) |
+| Slack | `slack_mcp_eval_export.zip` | Sample workspace data (27KB) events timestamped for early Dec 2025 (slack free accounts hide messages older than 90 days) |
 
 ## Setup
 

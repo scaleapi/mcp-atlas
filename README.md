@@ -1,12 +1,30 @@
-# Agent Environment
+# MCP-Atlas: A Large-Scale Benchmark for Tool-Use Competency with Real MCP Servers
 
-A complete setup with ~45 pre-configured Model Context Protocol (MCP) servers for AI agents, plus an agent completion service and evaluation scripts for testing.
+MCP-Atlas is a comprehensive benchmark for evaluating AI models' tool-use capabilities across 45 Model Context Protocol (MCP) servers. It provides a standardized environment for running agent completions and evaluating performance with LLM-as-judge methodology.
 
-Some MCP servers don't require API keys, but many others require you to get your own API keys. See `env.template` for where to get keys.
+- Paper: [LINK TO PAPER - TODO]
+- Leaderboard: [https://scale.com/leaderboard/mcp_atlas](https://scale.com/leaderboard/mcp_atlas)
+- Dataset: [LINK TO HUGGINGFACE/DATASET - TODO]
+
+## What is MCP-Atlas?
+MCP-Atlas evaluates how well AI agents can use tools to complete real-world tasks. The benchmark includes:
+
+- 45 MCP servers spanning categories like search, code execution, databases, APIs, and productivity tools
+  - 25 don't require any setup, 15 require you to get API keys, and 5 require API keys and data setup (detailed below).
+- 500 evaluation prompts with ground-truth expected tool calls and answers
+- LLM-as-judge evaluation producing pass rate, coverage rate, and detailed diagnostics
+- Dockerized environment ensuring reproducible results across different machines
+
+![MCP-Atlas Architecture](assets/architecture-diagram.png)
 
 ## Quick Start
 
-This project depends on these CLI tools: [docker](https://www.docker.com/products/docker-desktop/), [uv](https://docs.astral.sh/uv/getting-started/installation/#installation-methods), and python3.
+This project depends on these CLI tools: [docker](https://www.docker.com/products/docker-desktop/), [uv](https://docs.astral.sh/uv/getting-started/installation/#installation-methods), [jq](https://jqlang.org/download/), and python 3.10+.
+
+```bash
+git clone git@github.com:scaleapi/mcp-atlas.git
+cd mcp-atlas
+```
 
 ### 1. Configure environment
 
@@ -38,7 +56,7 @@ make build && make run-docker
 
 This starts the agent-environment service on port 1984 (takes 1+ minute to initialize). Before continuing, please wait for this to finish, you'll see log "Uvicorn running on http://0.0.0.0:1984". 
 
-By default, 25 servers that don't require API keys are enabled. Servers requiring API keys are auto-enabled only if you've set their keys in `.env`. To see the enabled mcp servers and confirm they're online: `curl -s http://localhost:1984/enabled-servers | jq -c`
+By default, [25 servers](services/agent-environment/src/agent_environment/mcp_client.py#L23) that don't require API keys are enabled. Servers requiring API keys are auto-enabled only if you've set their keys in `.env`. To see the enabled mcp servers and confirm they're online: `curl -s http://localhost:1984/enabled-servers | jq -c`
 
 Optional: to check what tools are available, you can use this CURL script `./services/agent-environment/dev_scripts/debug_and_concurrency_tests/curl_scripts/mcp__list_tools.sh | jq > list_tools.json ; open list_tools.json`
 
@@ -71,7 +89,7 @@ curl -X POST http://localhost:3000/v2/mcp_eval/run_agent \
 cd services/mcp_eval
 ```
 
-Run the script with a small sample of 10 tasks. This will use the specified input CSV file. It should be solvable with only the 25 MCP servers that don't require any API keys (enabled by default). For details on servers, see `env.template` and `mcp_server_template.json`.
+Run the script with a small sample of 10 tasks. This will use the specified input CSV file. It should be solvable with only the 25 MCP servers that don't require any API keys (enabled by default). For details on servers, see `env.template` and [`mcp_server_template.json`](services/agent-environment/src/agent_environment/mcp_server_template.json).
 
 ```bash
 uv run python mcp_completion_script.py \
@@ -133,7 +151,7 @@ Approximately 18% of evaluation tasks work with the 25 default servers. To run m
 - **MongoDB** - Restore `data_exports/mongo_dump_video_game_store-UNZIP-FIRST.zip` (486KB) using `mongorestore`
 - **Slack** - Import `data_exports/slack_mcp_eval_export_add100days.zip` (43KB) at your workspace's import page
 
-**See `data_exports/README.md` for detailed setup instructions for each service.** Without this sample data, these MCP servers will still function but may return empty results when evaluation tasks reference specific data.
+**See [`data_exports/README.md`](data_exports/README.md) for detailed setup instructions for each service.** Without this sample data, tasks that use these servers will return erroneous results because they cannot find the expected data.
 
 Note: Some services are paid and require billing setup. 
 
@@ -167,7 +185,7 @@ uv run mcp_evals_scores.py \
 
 ## What's Included
 
-- **45+ MCP servers** including calculator, Wikipedia, filesystem, Git, weather, GitHub, and more
+- **45 MCP servers** including calculator, Wikipedia, filesystem, Git, weather, GitHub, and more
 - **Agent completion service** for running multi-turn LLM conversations with tool use
 - **Docker containerization** for consistent MCP server environments
 - **HTTP APIs** for tool calling and listing available tools

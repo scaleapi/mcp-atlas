@@ -484,7 +484,7 @@ class AsyncLiteLLMClient(AsyncLLMClient):
                         {"role": "user", "content": prompt}
                     ],
                     response_format={"type": "json_object"},
-                    temperature=temperature,
+                    temperature=1 if self.config.model_name == "gpt-5" else temperature, # gpt-5 only supports temperature=1
                     api_key=litellm.api_key,
                     api_base=litellm.api_base if hasattr(litellm, 'api_base') and litellm.api_base else None,
                 )
