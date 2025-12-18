@@ -2,7 +2,7 @@
 
 MCP-Atlas is a comprehensive benchmark for evaluating AI models' tool-use capabilities across 36 Model Context Protocol (MCP) servers. It provides a standardized environment for running agent completions and evaluating performance with LLM-as-judge methodology.
 
-- Paper: [LINK TO PAPER - TODO]
+- Paper: [https://static.scale.com/uploads/674f4cc7a74e35bcaae1c29a/MCP_Atlas.pdf](https://static.scale.com/uploads/674f4cc7a74e35bcaae1c29a/MCP_Atlas.pdf) or ([local copy](assets/MCP_Atlas.pdf))
 - Leaderboard: [https://scale.com/leaderboard/mcp_atlas](https://scale.com/leaderboard/mcp_atlas)
 - Dataset: [https://huggingface.co/datasets/ScaleAI/MCP-Atlas](https://huggingface.co/datasets/ScaleAI/MCP-Atlas)
 
@@ -52,6 +52,8 @@ Edit `.env` and set:
 We use [LiteLLM](https://docs.litellm.ai/) to support 100+ LLMs via a unified API. Our examples use `openai/gpt-5.1`, but most other models should work. Ensure that LLM_API_KEY matches the model you're using.
 
 ### 2. Start the MCP servers
+
+**Note: Allocate at least 8GB memory to Docker (10GB+ recommended).**
 
 **Option A: Use pre-built image (faster, recommended):**
 
@@ -163,6 +165,7 @@ Options:
 - `--evaluator-model` - Override model (default: `EVAL_LLM_MODEL` env var or `gemini/gemini-2.5-pro`)
 - `--num-tasks` - Limit to first N tasks
 - `--concurrency` - Concurrent API requests (default: 5)
+- `--pass-threshold` - Coverage score threshold for pass rate calculation (default: 0.75)
 
 Outputs saved to `evaluation_results/`:
 - `scored_gpt51.csv` - Coverage scores for each task. On Mac, "Numbers" app works better to open CSV files with multi-line rows.
@@ -227,7 +230,9 @@ uv run mcp_evals_scores.py \
 
 ### 9. Evaluate other models
 
-To benchmark other models, repeat step 8 with a different `--model` and `--output`:
+To benchmark other models, repeat step 8 with a different `--model` and `--output`.
+
+If you are changing `LLM_API_KEY` you'll also have to restart `make run-mcp-completion`.
 
 See [LiteLLM's supported models](https://docs.litellm.ai/docs/providers) for the full list of available providers and model names. For self-hosted models, change `LLM_BASE_URL`.
 

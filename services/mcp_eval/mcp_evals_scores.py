@@ -79,7 +79,7 @@ def get_litellm_config():
     if not api_key:
         raise ValueError("LiteLLM API key not found. Set EVAL_LLM_API_KEY or LLM_API_KEY env var.")
     
-    api_base = os.getenv("EVAL_LLM_BASE_URL") or os.getenv("LLM_BASE_URL", "")
+    api_base = os.getenv("EVAL_LLM_BASE_URL", "")
     return api_key, api_base
 
 
@@ -554,7 +554,7 @@ async def evaluate_dataframe_async(df: pd.DataFrame, evaluator: CoverageEvaluato
 # 3. STATISTICAL ANALYSIS AND PLOTTING
 # =========================================================================
 
-def generate_statistics_and_plots(scored_csv_path: str, model_label: str, output_dir: str):
+def generate_statistics_and_plots(scored_csv_path: str, model_label: str, output_dir: str, pass_threshold: float = 0.75):
     """Generates a summary stats CSV and a histogram plot of coverage scores."""
     logger = logging.getLogger(__name__)
     logger.info(f"Step 4: Generating statistics and plots for '{scored_csv_path}'...")
@@ -570,9 +570,9 @@ def generate_statistics_and_plots(scored_csv_path: str, model_label: str, output
         # Rename "mean" to "mean coverage score"
         stats_df.loc[stats_df["stat"] == "mean", "stat"] = "mean coverage score"
         
-        # Calculate pass rate (% of tasks where coverage_score >= 0.75)
+        # Calculate pass rate (% of tasks where coverage_score >= pass_threshold)
         valid_scores = df["coverage_score"].dropna()
-        pass_count = (valid_scores >= 0.75).sum()
+        pass_count = (valid_scores >= pass_threshold).sum()
         total_count = len(valid_scores)
         pass_rate = pass_count / total_count if total_count > 0 else 0.0
         
@@ -680,7 +680,7 @@ async def main(args):
         logger.info(f"Evaluation complete. Average coverage: {valid_scores.mean():.3f}")
 
         # 3. Generate statistics and plots
-        generate_statistics_and_plots(scored_path, args.model_label, output_dir)
+        generate_statistics_and_plots(scored_path, args.model_label, output_dir, args.pass_threshold)
 
         logger.info(f"\n🚀 Pipeline finished successfully!")
         logger.info(f"Results available in: {output_dir}")
@@ -710,6 +710,8 @@ if __name__ == "__main__":
                        help="Number of concurrent requests to the LLM API.")
     parser.add_argument("--num-tasks", type=int, default=None, 
                        help="Limit evaluation to first N tasks (useful for testing). If not specified, processes all tasks.")
+    parser.add_argument("--pass-threshold", type=float, default=0.75,
+                       help="Coverage score threshold for pass rate calculation (default: 0.75)")
     
     args = parser.parse_args()
     

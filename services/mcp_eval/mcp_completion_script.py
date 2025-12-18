@@ -69,8 +69,9 @@ def get_retry_delay(attempt: int) -> float:
     jitter = delay * random.uniform(0, 0.5)
     return delay + jitter
 
-# System prompt for the model
+# System prompt for the model (only used if USE_SYSTEM_PROMPT_IN_COMPLETION=true)
 SYSTEM_PROMPT = "Role: You are a factual, tool-aware assistant connected to a variety of tools. Use the available tools to answer the user query. Do not ask the user for clarification; fully complete the task using the information provided in the prompt."
+USE_SYSTEM_PROMPT = os.getenv("USE_SYSTEM_PROMPT_IN_COMPLETION", "").lower() == "true"
 
 @dataclass
 class ToolCall:
@@ -208,12 +209,14 @@ class AsyncMCPTrajectoryGenerator:
         def uuid14():
             return str(uuid.uuid4()).replace('-', '')[-14:]
 
+        messages = []
+        if USE_SYSTEM_PROMPT:
+            messages.append({"role": "system", "content": SYSTEM_PROMPT})
+        messages.append({"role": "user", "content": user_prompt})
+        
         payload = {
             "model": self.llm_model,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
+            "messages": messages,
             "enabledTools": enabled_tools,
             "enableThinkingTokens": False,
         }
