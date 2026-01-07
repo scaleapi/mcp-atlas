@@ -58,8 +58,8 @@ We use [LiteLLM](https://docs.litellm.ai/) to support 100+ LLMs via a unified AP
 **Option A: Use pre-built image (faster, recommended):**
 
 ```bash
-docker pull ghcr.io/scaleapi/mcp-atlas:1.2.4
-docker tag ghcr.io/scaleapi/mcp-atlas:1.2.4 agent-environment:latest
+docker pull ghcr.io/scaleapi/mcp-atlas:1.2.5
+docker tag ghcr.io/scaleapi/mcp-atlas:1.2.5 agent-environment:latest
 make run-docker
 ```
 
