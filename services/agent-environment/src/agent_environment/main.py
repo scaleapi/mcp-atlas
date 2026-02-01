@@ -13,6 +13,13 @@ import json
 import hashlib
 import random
 
+import os
+
+# Check if Klavis Sandbox mode is enabled
+KLAVIS_SANDBOX_MODE = os.getenv("KLAVIS_SANDBOX_MODE", "").lower() == "true"
+if KLAVIS_SANDBOX_MODE:
+    from .klavis_sandbox_client import klavis_sandbox_manager, klavis_sandbox_client
+
 CACHE_TTL_HOURS = 48
 
 logger = create_logger(__name__)
@@ -86,20 +93,32 @@ class CallToolRequest(BaseModel):
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    mcp_servers = config.get("mcpServers", {})
-    logger.info(
-        f"Starting agent environment with {len(mcp_servers)} MCP servers: {mcp_servers.keys()}"
-    )
-    async with client:
-        tools = await client.list_tools()
-        logger.info(f"{len(tools)} tools loaded in total")
-        tool_names = [tool.name for tool in tools]
-        if "desktop-commander_set_config_value" in tool_names:
-            await client.call_tool(
-                "desktop-commander_set_config_value",
-                {"key": "allowedDirectories", "value": ["/data"]},
-            )
-    yield
+    if KLAVIS_SANDBOX_MODE:
+        # Klavis sandbox mode: acquire sandboxes with remote mcp servers from Klavis API
+        logger.info("Starting agent environment in KLAVIS SANDBOX MODE")
+        await klavis_sandbox_manager.acquire_all()
+        async with klavis_sandbox_client:
+            tools = await klavis_sandbox_client.list_tools()
+            logger.info(f"{len(tools)} tools loaded from Klavis sandbox servers")
+            yield
+        # Release sandboxes on shutdown
+        await klavis_sandbox_manager.release_all()
+    else:
+        # Local mode: use local MCP servers from config
+        mcp_servers = config.get("mcpServers", {})
+        logger.info(
+            f"Starting agent environment with {len(mcp_servers)} MCP servers: {mcp_servers.keys()}"
+        )
+        async with client:
+            tools = await client.list_tools()
+            logger.info(f"{len(tools)} tools loaded in total")
+            tool_names = [tool.name for tool in tools]
+            if "desktop-commander_set_config_value" in tool_names:
+                await client.call_tool(
+                    "desktop-commander_set_config_value",
+                    {"key": "allowedDirectories", "value": ["/data"]},
+                )
+        yield
 
 
 app = FastAPI(lifespan=lifespan)
@@ -114,13 +133,22 @@ async def root() -> dict[str, str]:
 @app.post("/list-tools")
 async def list_tools() -> list[mcp.types.Tool]:
     """List all available tools from the MCP server."""
-    async with client:
-        try:
-            return await client.list_tools()
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to list tools: {str(e)}"
-            )
+    if KLAVIS_SANDBOX_MODE:
+        async with klavis_sandbox_client:
+            try:
+                return await klavis_sandbox_client.list_tools()
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to list tools: {str(e)}"
+                )
+    else:
+        async with client:
+            try:
+                return await client.list_tools()
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to list tools: {str(e)}"
+                )
 
 
 def should_cache_tool(tool_name: str) -> bool:
@@ -157,36 +185,55 @@ async def call_tool(
         logger.info(f"Returning cached result for tool '{request.tool_name}'")
         return cached_result
 
-    async with client:
-        try:
-            result = await client.call_tool(mapped_tool_name, request.tool_args)
+    if KLAVIS_SANDBOX_MODE:
+        async with klavis_sandbox_client:
+            try:
+                result = await klavis_sandbox_client.call_tool(mapped_tool_name, request.tool_args)
 
-            # Check for errors first (FastMCP best practice)
-            if result.is_error:
-                error_msg = "Unknown error"
-                if result.content and isinstance(
-                    result.content[0], mcp.types.TextContent
-                ):
-                    error_msg = result.content[0].text
+                # Cache the successful result only for cacheable tools
+                content_blocks = result.content
+                if should_cache_tool(mapped_tool_name) and cache_key is not None:
+                    random_ttl = int(CACHE_TTL_HOURS * 60 * 60 * random.uniform(0.7, 1.0))
+                    tool_cache.set(cache_key, content_blocks, ttl=random_ttl)
+
+                return content_blocks
+
+            except Exception as e:
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Tool '{request.tool_name}' execution failed: {error_msg}",
+                    detail=f"Failed to call tool '{request.tool_name}': {str(e)}",
                 )
+    else:
+        async with client:
+            try:
+                result = await client.call_tool(mapped_tool_name, request.tool_args)
 
-            # Cache the successful result only for cacheable tools
-            content_blocks = result.content
-            if should_cache_tool(mapped_tool_name) and cache_key is not None:
-                # TTL is 70-100% of default TTL, to avoid all items expiring at the same time
-                random_ttl = int(CACHE_TTL_HOURS * 60 * 60 * random.uniform(0.7, 1.0))
-                tool_cache.set(cache_key, content_blocks, ttl=random_ttl)
+                # Check for errors first (FastMCP best practice)
+                if result.is_error:
+                    error_msg = "Unknown error"
+                    if result.content and isinstance(
+                        result.content[0], mcp.types.TextContent
+                    ):
+                        error_msg = result.content[0].text
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Tool '{request.tool_name}' execution failed: {error_msg}",
+                    )
 
-            return content_blocks
+                # Cache the successful result only for cacheable tools
+                content_blocks = result.content
+                if should_cache_tool(mapped_tool_name) and cache_key is not None:
+                    # TTL is 70-100% of default TTL, to avoid all items expiring at the same time
+                    random_ttl = int(CACHE_TTL_HOURS * 60 * 60 * random.uniform(0.7, 1.0))
+                    tool_cache.set(cache_key, content_blocks, ttl=random_ttl)
 
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to call tool '{request.tool_name}': {str(e)}",
-            )
+                return content_blocks
+
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to call tool '{request.tool_name}': {str(e)}",
+                )
 
 
 @app.get("/cache-stats")
@@ -209,48 +256,89 @@ async def clear_cache():
 @app.get("/enabled-servers")
 async def get_enabled_servers() -> dict[str, Any]:
     """Get list of configured MCP servers with their status (OK or ERROR_NOT_ONLINE)."""
-    configured = set(config.get("mcpServers", {}).keys())
+    if KLAVIS_SANDBOX_MODE:
+        # In Klavis sandbox mode, return acquired sandbox servers
+        configured = set(klavis_sandbox_manager.acquired_sandboxes.keys())
+        async with klavis_sandbox_client:
+            try:
+                tools = await klavis_sandbox_client.list_tools()
+                live_servers = set()
+                for tool in tools:
+                    if "_" in tool.name:
+                        server_name = tool.name.split("_", 1)[0]
+                        live_servers.add(server_name)
 
-    async with client:
-        try:
-            tools = await client.list_tools()
-            # Extract unique server prefixes from tool names (format: servername_toolname)
-            live_servers = set()
-            for tool in tools:
-                if "_" in tool.name:
-                    server_name = tool.name.split("_", 1)[0]
-                    live_servers.add(server_name)
+                servers = [
+                    (name, "OK" if name in live_servers else "ERROR_NOT_ONLINE")
+                    for name in sorted(configured)
+                ]
 
-            # Build status list for each configured server
-            servers = [
-                (name, "OK" if name in live_servers else "ERROR_NOT_ONLINE")
-                for name in sorted(configured)
-            ]
+                return {
+                    "mode": "klavis_sandbox",
+                    "servers": servers,
+                    "total": len(configured),
+                    "online": len(live_servers),
+                    "offline": len(configured - live_servers),
+                }
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to get server status: {str(e)}"
+                )
+    else:
+        configured = set(config.get("mcpServers", {}).keys())
 
-            return {
-                "servers": servers,
-                "total": len(configured),
-                "online": len(live_servers),
-                "offline": len(configured - live_servers),
-            }
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to get server status: {str(e)}"
-            )
+        async with client:
+            try:
+                tools = await client.list_tools()
+                # Extract unique server prefixes from tool names (format: servername_toolname)
+                live_servers = set()
+                for tool in tools:
+                    if "_" in tool.name:
+                        server_name = tool.name.split("_", 1)[0]
+                        live_servers.add(server_name)
+
+                # Build status list for each configured server
+                servers = [
+                    (name, "OK" if name in live_servers else "ERROR_NOT_ONLINE")
+                    for name in sorted(configured)
+                ]
+
+                return {
+                    "mode": "local",
+                    "servers": servers,
+                    "total": len(configured),
+                    "online": len(live_servers),
+                    "offline": len(configured - live_servers),
+                }
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to get server status: {str(e)}"
+                )
 
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
     """Simple health check that verifies client is also ok. Timeout is 5 seconds."""
     try:
+        if KLAVIS_SANDBOX_MODE:
+            async def _health_check_klavis_sandbox():
+                async with klavis_sandbox_client:
+                    return {
+                        "status": "health_and_klavis_sandbox_connection_ok",
+                        "mode": "klavis_sandbox",
+                        "sandboxes": len(klavis_sandbox_manager.acquired_sandboxes),
+                    }
 
-        async def _health_check_with_client():
-            async with client:
-                return {
-                    "status": "health_and_client_connection_ok",
-                }
+            return await asyncio.wait_for(_health_check_klavis_sandbox(), timeout=5.0)
+        else:
+            async def _health_check_with_client():
+                async with client:
+                    return {
+                        "status": "health_and_client_connection_ok",
+                        "mode": "local",
+                    }
 
-        return await asyncio.wait_for(_health_check_with_client(), timeout=5.0)
+            return await asyncio.wait_for(_health_check_with_client(), timeout=5.0)
 
     except asyncio.TimeoutError:
         return {
