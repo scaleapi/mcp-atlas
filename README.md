@@ -188,7 +188,7 @@ Approximately 18% of evaluation tasks work with the 20 default servers. To run m
 
 - **Airtable** - Visit the [shared base](https://airtable.com/appIF9byLfQwdHqE2/shr1KTZOgPl0qQmA8) and click "Copy base"
 - **Google Calendar (google-workspace)** - Import `data_exports/calendar_mcp_eval_export.zip` (8KB)
-- **Notion** - Import `data_exports/notion_mcp_eval_export.zip` (13MB) via Settings > Import
+- **Notion** - Import `data_exports/mcp-atlas-notion-data.zip` (1MB) via Settings > Import
 - **MongoDB** - Restore `data_exports/mongo_dump_video_game_store-UNZIP-FIRST.zip` (486KB) using `mongorestore`
 - **Slack** - Import `data_exports/slack_mcp_eval_export.zip` (43KB) at your workspace's import page
 
