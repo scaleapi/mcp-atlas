@@ -45,6 +45,7 @@ nest_asyncio.apply()
 
 # Configure LiteLLM - suppress verbose logging
 litellm.set_verbose = False
+litellm.drop_params = True
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 
@@ -360,26 +361,46 @@ class AsyncLiteLLMClient(AsyncLLMClient):
             try:
                 self.request_count += 1
 
-                # LiteLLM uses OpenAI-compatible format
-                # Pass response_schema for structured output (Gemini supports this natively)
-                response = await litellm.acompletion(
-                    model=self.config.evaluator_model,
-                    messages=[{"role": "user", "content": prompt}],
-                    response_format={
+                # Build response_format based on provider
+                model_name = self.config.evaluator_model.lower()
+                is_openai = model_name.startswith(("openai/", "gpt-", "o1", "o3", "o4"))
+                _REASONING_PREFIXES = ("o1", "o3", "o4", "gpt-5")
+                bare_name = model_name.removeprefix("openai/")
+                is_reasoning = any(bare_name.startswith(p) for p in _REASONING_PREFIXES)
+
+                if is_openai:
+                    fmt = {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "evaluation",
+                            "schema": {
+                                **response_schema,
+                                "additionalProperties": False,
+                            },
+                            "strict": True,
+                        },
+                    }
+                else:
+                    fmt = {
                         "type": "json_object",
                         "response_schema": response_schema,
-                    },
-                    temperature=(
-                        1 if self.config.evaluator_model == "gpt-5" else temperature
-                    ),  # gpt-5 only supports temperature=1
-                    api_key=litellm.api_key,
-                    api_base=(
+                    }
+
+                kwargs: Dict = {
+                    "model": self.config.evaluator_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "response_format": fmt,
+                    "api_key": litellm.api_key,
+                    "api_base": (
                         litellm.api_base
                         if hasattr(litellm, "api_base") and litellm.api_base
                         else None
                     ),
-                )
+                }
+                if not is_reasoning:
+                    kwargs["temperature"] = temperature
 
+                response = await litellm.acompletion(**kwargs)
                 # Rate limiting delay
                 await asyncio.sleep(self.config.request_delay)
 
