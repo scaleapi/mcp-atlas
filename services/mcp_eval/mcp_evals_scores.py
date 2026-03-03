@@ -363,7 +363,7 @@ class AsyncLiteLLMClient(AsyncLLMClient):
 
                 # Build response_format based on provider
                 model_name = self.config.evaluator_model.lower()
-                is_openai = model_name.startswith("openai/") or model_name.startswith("gpt-")
+                is_openai = model_name.startswith(("openai/", "gpt-", "o1", "o3", "o4"))
                 _REASONING_PREFIXES = ("o1", "o3", "o4", "gpt-5")
                 bare_name = model_name.removeprefix("openai/")
                 is_reasoning = any(bare_name.startswith(p) for p in _REASONING_PREFIXES)
