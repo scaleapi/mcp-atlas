@@ -20,6 +20,7 @@ import asyncio
 import json
 import re
 import time
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -70,6 +71,28 @@ def load_servers() -> tuple[dict[str, bool], dict[str, list[str]]]:
     needs_key = {name: _uses_api_key(cfg) for name, cfg in servers.items()}
     required_vars = {name: _extract_vars(cfg) for name, cfg in servers.items()}
     return needs_key, required_vars
+
+
+def build_random_oxylabs_query() -> str:
+    """Build a realistic random Google query to avoid cache collisions."""
+    topics = [
+        "best laptops for coding",
+        "python web framework comparison",
+        "electric car range comparison",
+        "top hiking trails in california",
+        "best noise cancelling headphones",
+        "ai coding assistant benchmark",
+    ]
+    modifiers = [
+        "latest review",
+        "buying guide",
+        "pros and cons",
+        "comparison",
+        "beginner friendly",
+        "expert recommendations",
+    ]
+    nonce = random.choice([5, 10, 20, 25, 50, 100])
+    return f"{random.choice(topics)} {random.choice(modifiers)} {nonce}"
 
 
 # ── Hardcoded test calls ──────────────────────────────────────────────────────
@@ -294,6 +317,11 @@ async def main(timeout: float, concurrency: int, only_server: str | None) -> Non
     servers, required_vars = load_servers()
     env_keys = load_env_keys(ENV_PATH)
     total = len(servers)
+    test_calls = {name: (tool, dict(args)) for name, (tool, args) in TEST_CALLS.items()}
+    if "oxylabs" in test_calls:
+        tool_name, tool_args = test_calls["oxylabs"]
+        tool_args["query"] = build_random_oxylabs_query()
+        test_calls["oxylabs"] = (tool_name, tool_args)
 
     # Warn about any servers in the template that lack a test call
     no_test = [s for s in servers if s not in TEST_CALLS]
@@ -303,9 +331,9 @@ async def main(timeout: float, concurrency: int, only_server: str | None) -> Non
 
     # Build the list of tests to run
     tests = [
-        (name, servers[name], *TEST_CALLS[name])
+        (name, servers[name], *test_calls[name])
         for name in servers
-        if name in TEST_CALLS and (only_server is None or name == only_server)
+        if name in test_calls and (only_server is None or name == only_server)
     ]
 
     sem = asyncio.Semaphore(concurrency)
