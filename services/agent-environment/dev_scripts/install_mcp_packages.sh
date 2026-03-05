@@ -35,7 +35,7 @@ uv tool install mcp-server-calculator==0.2.0
 uv tool install cli-mcp-server==0.2.5
 uv tool install duckduckgo-mcp-server==0.1.1
 uv tool install mcp-server-fetch==2025.4.7
-uv tool install mcp-server-git==2025.7.1
+uv tool install mcp-server-git==2026.1.14
 uv tool install osm-mcp-server==0.1.1
 uv tool install oxylabs-mcp==0.4.1
 uv tool install mcp-server-twelve-data==0.2.5
