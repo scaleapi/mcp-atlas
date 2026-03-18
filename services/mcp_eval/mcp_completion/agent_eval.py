@@ -48,6 +48,11 @@ async def run_mcp_eval(
     transformed_tools = _transform_tool_calls([tool.model_dump() for tool in tools])
 
     all_messages: List[Message] = list(messages)
+    usage_totals = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+    }
 
     for i in range(max_turns):
         assistant_message = None
@@ -64,6 +69,21 @@ async def run_mcp_eval(
 
             assistant_message = result.message
             original_content = result.original_content
+            if result.usage:
+                usage_totals["prompt_tokens"] += int(
+                    result.usage.get("prompt_tokens", 0) or 0
+                )
+                usage_totals["completion_tokens"] += int(
+                    result.usage.get("completion_tokens", 0) or 0
+                )
+                usage_totals["total_tokens"] += int(
+                    result.usage.get(
+                        "total_tokens",
+                        (result.usage.get("prompt_tokens", 0) or 0)
+                        + (result.usage.get("completion_tokens", 0) or 0),
+                    )
+                    or 0
+                )
 
         except Exception as error:
             error_type = type(error).__name__
@@ -116,6 +136,9 @@ async def run_mcp_eval(
         else:
             # No more tool calls, agent is done
             break
+
+    if usage_totals["total_tokens"] > 0:
+        yield AgentOutput("usage", usage_totals)
 
 
 async def handle_run_mcp_eval(

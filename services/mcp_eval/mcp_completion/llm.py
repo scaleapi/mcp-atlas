@@ -23,6 +23,7 @@ class LLMResponse(BaseModel):
 
     message: AssistantMessage
     original_content: Optional[str] = None
+    usage: Optional[Dict[str, Any]] = None
 
 
 def configure_litellm():
@@ -32,6 +33,23 @@ def configure_litellm():
 
 # Configure LiteLLM once at module level
 configure_litellm()
+
+
+def _serialize_usage(usage_obj: Any) -> Optional[Dict[str, Any]]:
+    """Convert LiteLLM usage metadata into a plain dict."""
+    if usage_obj is None:
+        return None
+    if isinstance(usage_obj, dict):
+        return usage_obj
+    if hasattr(usage_obj, "model_dump"):
+        return usage_obj.model_dump()
+    if hasattr(usage_obj, "__dict__"):
+        return {
+            key: value
+            for key, value in vars(usage_obj).items()
+            if not key.startswith("_")
+        }
+    return None
 
 
 def is_anthropic_model(model: str) -> bool:
@@ -176,7 +194,10 @@ async def create_completion(
             original_message=response.choices[0].message,
         )
 
-        return LLMResponse(message=assistant_message)
+        return LLMResponse(
+            message=assistant_message,
+            usage=_serialize_usage(getattr(response, "usage", None)),
+        )
 
     except Exception as error:
         error_type = type(error).__name__

@@ -443,6 +443,14 @@ class AsyncMCPTrajectoryGenerator:
                                 prompt_tokens=usage.get('prompt_tokens', 0),
                                 completion_tokens=usage.get('completion_tokens', 0)
                             )
+                        elif isinstance(messages, list):
+                            for item in messages:
+                                if item.get("type") == "usage":
+                                    usage = item.get("data", {})
+                                    await rate_limit_tracker.record_token_usage(
+                                        prompt_tokens=usage.get("prompt_tokens", 0),
+                                        completion_tokens=usage.get("completion_tokens", 0),
+                                    )
 
                         # Record success to reset failure counter
                         await rate_limit_tracker.record_success()
