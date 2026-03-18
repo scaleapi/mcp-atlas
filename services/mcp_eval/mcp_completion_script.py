@@ -601,8 +601,9 @@ class AsyncMCPTrajectoryGenerator:
 
                     # Handle AgentOutput format: array of {type: 'message'|'error', data: ...} objects
                     for item in reversed(conversation):
-                        if item.get("type") == "message":
-                            msg = item.get("data", {})
+                        if item.get("type") != "message":
+                            continue
+                        msg = item.get("data", {})
                         if msg.get("role") == "assistant" and msg.get("content"):
                             result.script_model_response = msg["content"]
                             break
