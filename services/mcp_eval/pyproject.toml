@@ -28,12 +28,6 @@ dependencies = [
     "datasets>=2.14.0",
 ]
 
-[project.optional-dependencies]
-# Scale-internal: Redis-based tool call caching via sgpml-cache (hosted on AWS CodeArtifact).
-# Install with: uv pip install "mcp-eval[scale-cache]"
-# Requires TOOL_CACHE_ENABLED=true to activate. Code falls back to non-cached calls if missing.
-scale-cache = ["sgpml-cache>=1.2.2"]
-
 [project.scripts]
 mcp-eval = "mcp_completion.main:main"
 

@@ -260,16 +260,18 @@ This is a branch of [scaleapi/mcp-atlas](https://github.com/scaleapi/mcp-atlas) 
 - **sandbox_client.py**: Optional Redis-based tool call caching (Scale-internal `sgpml-cache`)
 - **llm.py**: Anthropic prompt caching support
 - **mcp_completion_script.py**: User tool support, format handling enhancements
-- **pyproject.toml**: `sgpml-cache` as optional `[scale-cache]` extra to cache mcp tool calls
+- **pyproject.toml**: leaves `sgpml-cache` out of public dependencies so normal `uv` workflows do not break outside Scale
 
 ### Scale-internal caching (optional)
 
 Tool call caching uses `sgpml-cache`, a Scale-internal package on AWS CodeArtifact. To enable:
 ```bash
-# Install with caching support (requires Scale VPN + CodeArtifact credentials)
-uv pip install "mcp-eval[scale-cache]"
+# Install manually after `uv sync` (requires Scale VPN + CodeArtifact credentials)
+uv pip install sgpml-cache
 
 # Activate via environment variable (Make sure to set the redis URL and other relevant fields)
 TOOL_CACHE_ENABLED=true
 ```
+`sgpml-cache` is intentionally not declared in `pyproject.toml`, because doing so breaks public `uv lock` and `uv sync` workflows when CodeArtifact access is unavailable.
+
 Without `sgpml-cache`, the code gracefully falls back to non-cached tool calls.

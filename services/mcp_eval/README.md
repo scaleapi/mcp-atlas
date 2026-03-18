@@ -15,6 +15,11 @@ A standalone Python package for running multi-turn LLM conversations that levera
 ```bash
 uv sync
 ```
+`sgpml-cache` is intentionally not listed in `pyproject.toml`, because it is Scale-internal and would otherwise break public `uv` workflows.
+If you need Redis tool-call caching inside Scale, install it manually after `uv sync`:
+```bash
+uv pip install sgpml-cache
+```
 
 2. Configure environment:
 ```bash
