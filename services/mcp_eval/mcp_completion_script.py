@@ -58,20 +58,138 @@ logging.basicConfig(
 
 # Configuration - load from environment variables with defaults
 SERVER_URL = os.getenv("SERVER_URL", "http://localhost:3000")
+USER_TOOL_ENABLED = os.getenv("USER_TOOL_ENABLED", "").lower() == "true"
 
 # Retry configuration
 MAX_RETRY_ATTEMPTS = int(os.getenv("MAX_RETRY_ATTEMPTS", "3"))
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "600"))  # 5 minutes timeout (batching handles rate limits)
+
+# Backoff configuration - minimal since batching handles rate limiting
+RATE_LIMIT_COOLDOWN_SECONDS = int(os.getenv("RATE_LIMIT_COOLDOWN_SECONDS", "60"))  # 1 minute default
+MAX_COOLDOWN_SECONDS = int(os.getenv("MAX_COOLDOWN_SECONDS", "300"))  # 5 minutes max cooldown
+CONSECUTIVE_FAILURES_THRESHOLD = int(os.getenv("CONSECUTIVE_FAILURES_THRESHOLD", "10"))  # Rarely trigger cooldown (batching handles this)
 
 
-def get_retry_delay(attempt: int) -> float:
-    """Calculate exponential backoff delay with jitter. Base: 5s, 10s, 20s..."""
-    delay = 5 * (2**attempt)
-    jitter = delay * random.uniform(0, 0.5)
+class GlobalRateLimitTracker:
+    """Track consecutive failures across all tasks to detect rate limiting."""
+
+    def __init__(self):
+        self.consecutive_failures = 0
+        self.lock = asyncio.Lock()
+        self.in_cooldown = False
+        self.cooldown_event = asyncio.Event()
+        self.cooldown_event.set()  # Initially not in cooldown
+        self.current_cooldown_duration = RATE_LIMIT_COOLDOWN_SECONDS
+        self.cooldown_count = 0  # Track how many times we've hit cooldown
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+        self.total_tokens = 0
+        self.tasks_completed = 0
+
+    async def record_failure(self, task_id: str, error_type: str):
+        """Record a failure and potentially trigger global cooldown."""
+        async with self.lock:
+            self.consecutive_failures += 1
+            logging.warning(f"Task {task_id} failed ({error_type}). Consecutive failures: {self.consecutive_failures}/{CONSECUTIVE_FAILURES_THRESHOLD}")
+
+            if self.consecutive_failures >= CONSECUTIVE_FAILURES_THRESHOLD and not self.in_cooldown:
+                self.in_cooldown = True
+                self.cooldown_event.clear()
+                self.cooldown_count += 1
+                # Escalating cooldown: double each time, up to max
+                self.current_cooldown_duration = min(
+                    RATE_LIMIT_COOLDOWN_SECONDS * (2 ** (self.cooldown_count - 1)),
+                    MAX_COOLDOWN_SECONDS
+                )
+                logging.warning(f"🚨 Rate limit detected! {self.consecutive_failures} consecutive failures.")
+                logging.warning(f"🚨 Starting cooldown #{self.cooldown_count}: {self.current_cooldown_duration}s ({self.current_cooldown_duration/60:.1f} minutes)")
+                # Start cooldown in background
+                asyncio.create_task(self._do_cooldown())
+
+    async def record_success(self):
+        """Record a success, resetting the failure counter and cooldown escalation."""
+        async with self.lock:
+            if self.consecutive_failures > 0:
+                logging.info(f"✅ Success after {self.consecutive_failures} failures. Resetting counter.")
+            self.consecutive_failures = 0
+            # Reset cooldown escalation after success
+            if self.cooldown_count > 0:
+                logging.info(f"✅ Resetting cooldown escalation (was at level {self.cooldown_count})")
+                self.cooldown_count = 0
+                self.current_cooldown_duration = RATE_LIMIT_COOLDOWN_SECONDS
+
+    async def record_token_usage(self, prompt_tokens: int, completion_tokens: int):
+        """Record token usage and log periodically."""
+        async with self.lock:
+            self.total_prompt_tokens += prompt_tokens
+            self.total_completion_tokens += completion_tokens
+            self.total_tokens += (prompt_tokens + completion_tokens)
+            self.tasks_completed += 1
+
+            # Log every 10 tasks
+            if self.tasks_completed % 10 == 0:
+                logging.info(
+                    f"📊 Token usage after {self.tasks_completed} tasks: "
+                    f"{self.total_prompt_tokens:,} input + {self.total_completion_tokens:,} output "
+                    f"= {self.total_tokens:,} total tokens"
+                )
+
+    async def _do_cooldown(self):
+        """Execute the cooldown period."""
+        logging.warning(f"⏸️  All tasks paused for {self.current_cooldown_duration}s cooldown ({self.current_cooldown_duration/60:.1f} minutes)")
+        await asyncio.sleep(self.current_cooldown_duration)
+        async with self.lock:
+            self.in_cooldown = False
+            self.consecutive_failures = 0
+            self.cooldown_event.set()
+        logging.info("▶️  Cooldown complete. Resuming tasks...")
+
+    async def wait_if_in_cooldown(self):
+        """Wait if we're currently in a cooldown period."""
+        await self.cooldown_event.wait()
+
+
+# Global rate limit tracker instance
+rate_limit_tracker = GlobalRateLimitTracker()
+
+
+def get_retry_delay(attempt: int, is_timeout: bool = False) -> float:
+    """Calculate exponential backoff delay with jitter.
+
+    Reduced delays since batching handles rate limiting at a higher level.
+    For timeouts: Short backoff (5s, 10s, 20s...)
+    For other errors: Minimal backoff (2s, 4s, 8s...)
+    """
+    if is_timeout:
+        # Short backoff for timeouts
+        delay = 5 * (2**attempt)  # 5s, 10s, 20s
+        jitter = delay * random.uniform(0, 0.3)
+    else:
+        # Minimal backoff for other errors
+        delay = 2 * (2**attempt)  # 2s, 4s, 8s
+        jitter = delay * random.uniform(0, 0.5)
     return delay + jitter
 
 
 # System prompt for the model (only used if USE_SYSTEM_PROMPT_IN_COMPLETION=true)
 SYSTEM_PROMPT = "Role: You are a factual, tool-aware assistant connected to a variety of tools. Use the available tools to answer the user query. Do not ask the user for clarification; fully complete the task using the information provided in the prompt."
+
+# System prompt when USER_TOOL_ENABLED is True (includes ask_user instructions)
+SYSTEM_PROMPT_WITH_USER_TOOL = """Role: You are a factual, tool-aware assistant connected to a variety of tools. Use the available tools to answer the user query. IMPORTANT: Your output will be checked by an auto-grader looking for exact answers.
+This task may be missing critical information.
+Use the ask_user tool to ask the user for any missing details."""
+
+SYSTEM_PROMPT_SUPERVISOR = SYSTEM_PROMPT_WITH_USER_TOOL + """
+Note: The user is currently sitting with you in a live session, explicitly waiting to answer your questions to ensure the result is perfect. Do not guess.
+"""
+
+SYSTEM_PROMPT_STANDARD_ASSISTANT = SYSTEM_PROMPT_WITH_USER_TOOL + """
+Note: The user is working on other tasks but is available to answer questions. You should ask questions if you are missing information necessary to complete the task.
+"""
+
+SYSTEM_PROMPT_BUSY_EXECUTIVE = SYSTEM_PROMPT_WITH_USER_TOOL + """
+Note: The user is very busy with other high stakes tasks and should not be disturbed. You should ONLY interrupt them if proceeding without clarification would lead to a factual failure. For minor details, make a reasonable assumption.
+"""
 USE_SYSTEM_PROMPT = os.getenv("USE_SYSTEM_PROMPT_IN_COMPLETION", "").lower() == "true"
 
 
@@ -97,9 +215,10 @@ class GenerationResult:
 class AsyncMCPTrajectoryGenerator:
     """Fully async MCP trajectory generator - each task is independent"""
 
-    def __init__(self, llm_model: str, extra_body: dict = None):
+    def __init__(self, llm_model: str, extra_body: dict = None, input_fieldnames: Optional[List[str]] = None):
         self.llm_model = llm_model
         self.extra_body = extra_body or {}
+        self.input_fieldnames = input_fieldnames or []
         self.csv_lock = asyncio.Lock()  # For thread-safe CSV writing
 
     async def __aenter__(self):
@@ -236,7 +355,13 @@ class AsyncMCPTrajectoryGenerator:
             return []
 
     async def run_live_task_async(
-        self, enabled_tools: List[str], user_prompt: str, taskId: Optional[str]
+        self,
+        enabled_tools: List[str],
+        user_prompt: str,
+        taskId: Optional[str],
+        original_prompt: Optional[str] = None,
+        removed_value: Optional[str] = None,
+        underspecified_prompt: Optional[str] = None,
     ) -> Tuple[Optional[str], int]:
         """Async API call to get live task response - returns (response, num_attempts)"""
 
@@ -245,7 +370,21 @@ class AsyncMCPTrajectoryGenerator:
 
         messages = []
         if USE_SYSTEM_PROMPT:
-            messages.append({"role": "system", "content": SYSTEM_PROMPT})
+            # Use the user-tool-aware system prompt if USER_TOOL_ENABLED, otherwise use the standard one
+            system_prompt = SYSTEM_PROMPT_WITH_USER_TOOL if USER_TOOL_ENABLED else SYSTEM_PROMPT
+
+            # add user type specific system prompt
+            if os.getenv("USER_TYPE") == "supervisor":
+                logging.info("Using supervisor system prompt")
+                system_prompt = SYSTEM_PROMPT_SUPERVISOR
+            elif os.getenv("USER_TYPE") == "standard_assistant":
+                logging.info("Using standard assistant system prompt")
+                system_prompt = SYSTEM_PROMPT_STANDARD_ASSISTANT
+            elif os.getenv("USER_TYPE") == "busy_executive":
+                logging.info("Using busy executive system prompt")
+                system_prompt = SYSTEM_PROMPT_BUSY_EXECUTIVE
+
+            messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_prompt})
 
         payload = {
@@ -255,15 +394,39 @@ class AsyncMCPTrajectoryGenerator:
             "enableThinkingTokens": False,
             **({"extraBody": self.extra_body} if self.extra_body else {}),
         }
+
+        # Add user context for ask_user tool if enabled
+        if USER_TOOL_ENABLED and original_prompt and removed_value:
+            # Parse removed_value - it may be a JSON list string or a simple string
+            try:
+                removed_values = json.loads(removed_value) if removed_value.startswith("[") else [removed_value]
+            except (json.JSONDecodeError, AttributeError):
+                removed_values = [removed_value] if removed_value else []
+
+            payload["userContext"] = {
+                "original_prompt": original_prompt,
+                "removed_value": removed_values,
+                "underspecified_prompt": underspecified_prompt,
+            }
+
         headers = {"Content-Type": "application/json"}
 
         url = f"{SERVER_URL}/v2/mcp_eval/run_agent"
 
         for attempt in range(MAX_RETRY_ATTEMPTS):
+            # Wait if we're in a global cooldown period
+            await rate_limit_tracker.wait_if_in_cooldown()
+
+            is_timeout_error = False
+            litellm_call_id = None
+
             try:
                 async with self.session.post(
-                    url, json=payload, headers=headers, timeout=240
+                    url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT
                 ) as resp:
+                    # Capture litellm's request tracking ID
+                    litellm_call_id = resp.headers.get('x-litellm-call-id')
+
                     if resp.status == 200:
                         try:
                             messages = await resp.json()
@@ -272,20 +435,62 @@ class AsyncMCPTrajectoryGenerator:
                             messages = json.loads(text)
 
                         response = json.dumps(messages) if messages else None
+
+                        # Extract and record token usage if available
+                        if isinstance(messages, dict) and 'usage' in messages:
+                            usage = messages['usage']
+                            await rate_limit_tracker.record_token_usage(
+                                prompt_tokens=usage.get('prompt_tokens', 0),
+                                completion_tokens=usage.get('completion_tokens', 0)
+                            )
+
+                        # Record success to reset failure counter
+                        await rate_limit_tracker.record_success()
+                        if litellm_call_id:
+                            logging.info(f"✅ Task {taskId} succeeded (litellm_call_id: {litellm_call_id})")
                         return response, attempt + 1
-                    else:
+                    elif resp.status == 429:
+                        # Explicit rate limit response
                         error_text = await resp.text()
                         logging.error(
-                            f"HTTP {resp.status} error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: {error_text}"
+                            f"Rate limit (429) on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId} (litellm_call_id: {litellm_call_id or 'N/A'}): {error_text}"
                         )
-
+                        is_timeout_error = True  # Treat rate limits like timeouts for backoff
+                        await rate_limit_tracker.record_failure(taskId, "HTTP 429")
+                    else:
+                        error_text = await resp.text()
+                        # Check for context window exceeded errors (don't retry these)
+                        if "ContextWindowExceededError" in error_text or "Input tokens exceed" in error_text:
+                            logging.error(
+                                f"Context window exceeded for task {taskId} (litellm_call_id: {litellm_call_id or 'N/A'}): {error_text[:500]}"
+                            )
+                            logging.error(f"❌ Skipping retries for task {taskId} - context window cannot be fixed by retrying")
+                            return None, attempt + 1  # Return immediately, don't retry
+                        
+                        logging.error(
+                            f"HTTP {resp.status} error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId} (litellm_call_id: {litellm_call_id or 'N/A'}): {error_text}"
+                        )
+                        # Record failure for non-200 responses
+                        await rate_limit_tracker.record_failure(taskId, f"HTTP {resp.status}")
+            except asyncio.TimeoutError:
+                logging.error(
+                    f"Timeout error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId} (litellm_call_id: {litellm_call_id or 'N/A'}): Request timed out after {REQUEST_TIMEOUT}s"
+                )
+                is_timeout_error = True
+                await rate_limit_tracker.record_failure(taskId, "Timeout")
             except Exception as e:
                 logging.error(
-                    f"Error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: {e}"
+                    f"Error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId} (litellm_call_id: {litellm_call_id or 'N/A'}): {type(e).__name__}: {str(e)}"
                 )
+                if hasattr(e, '__dict__'):
+                    logging.error(f"  Error details: {e.__dict__}")
+                await rate_limit_tracker.record_failure(taskId, type(e).__name__)
 
             if attempt < MAX_RETRY_ATTEMPTS - 1:
-                delay = get_retry_delay(attempt)
+                # Wait for any global cooldown first
+                await rate_limit_tracker.wait_if_in_cooldown()
+                # Then apply per-task backoff
+                delay = get_retry_delay(attempt, is_timeout=is_timeout_error)
                 logging.info(f"Retrying task {taskId} in {delay:.0f}s...")
                 await asyncio.sleep(delay)
 
@@ -294,13 +499,38 @@ class AsyncMCPTrajectoryGenerator:
     async def write_result_to_csv(self, result_dict: Dict[str, Any], output_file: str):
         """Write a single result to CSV file (thread-safe)"""
         async with self.csv_lock:
+            # Ensure parent directory exists
+            output_dir = os.path.dirname(output_file)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+
             # Use a more robust approach - always append, but track if we need headers
             file_exists = (
                 os.path.exists(output_file) and os.path.getsize(output_file) > 0
             )
+            # Define completion-specific columns that we always add
+            completion_columns = [
+                "script_model_response",
+                "raw_conversation_history",
+                "trajectory",
+                "errors",
+                "trajectory_time",
+                "num_retry",
+            ]
+
+            # Build consistent fieldnames: input columns + completion columns
+            # Use input_fieldnames if available, otherwise fall back to result_dict.keys()
+            if self.input_fieldnames:
+                # Start with input columns, then add completion columns not already present
+                fieldnames = list(self.input_fieldnames)
+                for col in completion_columns:
+                    if col not in fieldnames:
+                        fieldnames.append(col)
+            else:
+                fieldnames = list(result_dict.keys())
 
             async with aiofiles.open(output_file, "a", newline="") as f:
-                writer = aiocsv.AsyncDictWriter(f, fieldnames=result_dict.keys())
+                writer = aiocsv.AsyncDictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
                 if not file_exists:  # Write headers only if file is empty/doesn't exist
                     await writer.writeheader()
                 await writer.writerow(result_dict)
@@ -313,7 +543,7 @@ class AsyncMCPTrajectoryGenerator:
         total_tasks: int,
     ) -> Dict[str, Any]:
         """Complete pipeline: fetch → process → write for a single task"""
-        task_id = row_data.get("TASK", task_index)
+        task_id = row_data.get("TASK", row_data.get("task", task_index))
         prompt = row_data.get("PROMPT", "")
         num_attempts = 0
 
@@ -334,6 +564,9 @@ class AsyncMCPTrajectoryGenerator:
                 enabled_tools=enabled_tools,
                 user_prompt=row_data.get("PROMPT", ""),
                 taskId=task_id,
+                original_prompt=row_data.get("original_prompt"),
+                removed_value=row_data.get("removed_value"),
+                underspecified_prompt=row_data.get("PROMPT", ""),
             )
 
             # 2. PROCESS: Evaluate the task
@@ -403,13 +636,13 @@ class AsyncMCPTrajectoryGenerator:
             result.num_retry = num_attempts
 
             # Create result dictionary with BOTH ground truth and completion data
-            result_dict = {
-                # Ground truth columns (from input dataset) - all CAPS
-                "TASK": task_id,
-                "PROMPT": prompt,
-                "TRAJECTORY": row_data.get("TRAJECTORY", ""),
-                "GTFA_CLAIMS": row_data.get("GTFA_CLAIMS", ""),
-                "ENABLED_TOOLS": row_data.get("ENABLED_TOOLS", ""),
+            # Start with all input columns to preserve any extra metadata
+            result_dict = dict(row_data)
+
+            # Add/override with completion results
+            result_dict.update({
+                "TASK": task_id,  # Ensure task_id is correct
+                "PROMPT": prompt,  # Ensure prompt is correct
                 # Completion result columns (from script execution) - all lowercase
                 "script_model_response": result.script_model_response,
                 "raw_conversation_history": result.raw_conversation_history,
@@ -421,7 +654,7 @@ class AsyncMCPTrajectoryGenerator:
                 "errors": trajectory_errors,
                 "trajectory_time": result.trajectory_time,
                 "num_retry": result.num_retry,
-            }
+            })
 
             # 3. WRITE: Save to CSV
             await self.write_result_to_csv(result_dict, output_file)
@@ -444,14 +677,13 @@ class AsyncMCPTrajectoryGenerator:
                 row_data.get("ENABLED_TOOLS", "[]")
             )
 
-            # Write error result with ground truth columns
-            error_result = {
-                # Ground truth columns (from input dataset) - all CAPS
-                "TASK": task_id,
-                "PROMPT": prompt,
-                "TRAJECTORY": row_data.get("TRAJECTORY", ""),
-                "GTFA_CLAIMS": row_data.get("GTFA_CLAIMS", ""),
-                "ENABLED_TOOLS": row_data.get("ENABLED_TOOLS", ""),
+            # Write error result with all input columns preserved
+            error_result = dict(row_data)
+
+            # Add/override with error information
+            error_result.update({
+                "TASK": task_id,  # Ensure task_id is correct
+                "PROMPT": prompt,  # Ensure prompt is correct
                 # Completion result columns (from script execution) - all lowercase
                 "script_model_response": f"ERROR: {str(e)}",
                 "raw_conversation_history": None,
@@ -459,7 +691,7 @@ class AsyncMCPTrajectoryGenerator:
                 "errors": [],
                 "trajectory_time": trajectory_time,
                 "num_retry": num_attempts,  # Use actual retry count even in error case
-            }
+            })
             await self.write_result_to_csv(error_result, output_file)
             return error_result
 
@@ -482,7 +714,7 @@ class AsyncMCPTrajectoryGenerator:
         # Filter out already processed tasks
         tasks_to_process = []
         for idx, row in df.iterrows():
-            task_id = row.get("TASK", idx)
+            task_id = row.get("TASK", row.get("task", idx))
             if processed_task_ids is None or task_id not in processed_task_ids:
                 tasks_to_process.append((idx, row.to_dict()))
 
@@ -514,36 +746,13 @@ class AsyncMCPTrajectoryGenerator:
         logging.info(
             f"⚡ Average time per task: {(end_time - start_time) / len(tasks_to_process):.1f} seconds"
         )
+        logging.info(
+            f"📊 Final token usage: {rate_limit_tracker.total_prompt_tokens:,} input + "
+            f"{rate_limit_tracker.total_completion_tokens:,} output = "
+            f"{rate_limit_tracker.total_tokens:,} total tokens"
+        )
 
         return pd.DataFrame(valid_results)
-
-        """Parse claims from string format"""
-        if not claims_str or pd.isna(claims_str):
-            return []
-
-        try:
-            # Try parsing as JSON list
-            if claims_str.strip().startswith("["):
-                return json.loads(claims_str)
-            # Otherwise split by common delimiters
-            else:
-                # Split by semicolon or newline
-                claims = []
-                for delimiter in [";", "\n", ","]:
-                    if delimiter in claims_str:
-                        claims = [
-                            claim.strip()
-                            for claim in claims_str.split(delimiter)
-                            if claim.strip()
-                        ]
-                        break
-
-                if not claims:
-                    claims = [claims_str.strip()]
-
-                return claims
-        except:
-            return [claims_str.strip()] if claims_str.strip() else []
 
 
 def run_extract_script(input_csv_path: str) -> str:
@@ -597,7 +806,7 @@ def filter_tasks_by_enabled_servers(
     excluded_tasks = []
 
     for idx, row in df.iterrows():
-        task_id = str(row.get("TASK", idx))
+        task_id = str(row.get("TASK", row.get("task", idx)))
         task_servers = tool_map.get(task_id, [])
 
         # Check if all required servers are enabled
@@ -758,6 +967,18 @@ def parse_arguments():
         default=None,
         help='JSON string of extra body params to pass to the completion service (e.g. \'{"reasoning_effort": "xhigh", "allowed_openai_params": ["reasoning_effort"]}\')',
     )
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=None,
+        help="Start index for task slicing (0-based, inclusive)",
+    )
+    parser.add_argument(
+        "--end-index",
+        type=int,
+        default=None,
+        help="End index for task slicing (exclusive)",
+    )
 
     return parser.parse_args()
 
@@ -765,8 +986,12 @@ def parse_arguments():
 async def main():
     args = parse_arguments()
 
-    # Prepend completion_results/ to output path
-    output_csv = os.path.join("completion_results", args.output)
+    # Prepend completion_results/ to output path only if it's a relative filename
+    # If the path already contains directory separators or is absolute, use it as-is
+    if os.path.isabs(args.output) or os.path.dirname(args.output):
+        output_csv = args.output
+    else:
+        output_csv = os.path.join("completion_results", args.output)
 
     # Load data from either CSV file or HuggingFace dataset
     if args.input:
@@ -777,8 +1002,6 @@ async def main():
 
         logging.info(f"Loading data from '{csv_filename}'...")
         df = pd.read_csv(csv_filename)
-        if args.num_tasks:
-            df = df.head(args.num_tasks)
     else:
         # Load from HuggingFace dataset
         logging.info(
@@ -786,12 +1009,21 @@ async def main():
         )
         dataset = load_dataset(args.input_huggingface, split="train")
         df = dataset.to_pandas()
-        if args.num_tasks:
-            df = df.head(args.num_tasks)
 
         # Set csv_filename for filtering logic (no need to save a separate GTFA file anymore)
         csv_filename = None  # Will be created as temp file if needed for filtering
 
+    # Apply task slicing (index-based or head-based)
+    start_index = getattr(args, 'start_index', None)
+    end_index = getattr(args, 'end_index', None)
+    if start_index is not None or end_index is not None:
+        start = start_index if start_index is not None else 0
+        end = end_index if end_index is not None else len(df)
+        df = df.iloc[start:end].copy()
+        df = df.reset_index(drop=True)  # Reset index to 0, 1, 2, ... for consistent downstream processing
+        logging.info(f"Sliced tasks [{start}:{end}], {len(df)} tasks")
+    elif args.num_tasks:
+        df = df.head(args.num_tasks)
     logging.info(f"Successfully loaded {len(df)} tasks")
 
     # Filter by enabled servers (default behavior, unless --no-filter is specified)
@@ -865,18 +1097,21 @@ async def main():
     processed_ids = set()
     if os.path.exists(output_csv):
         try:
-            existing_df = pd.read_csv(output_csv, usecols=["TASK"])
-            processed_ids = set(existing_df["TASK"].astype(str))
-            logging.info(
-                f"Found {len(processed_ids)} already processed tasks. Skipping them."
-            )
+            existing_df = pd.read_csv(output_csv)
+            # Handle both TASK and task column names
+            task_col = "TASK" if "TASK" in existing_df.columns else "task"
+            if task_col in existing_df.columns:
+                processed_ids = set(existing_df[task_col].astype(str))
+                logging.info(
+                    f"Found {len(processed_ids)} already processed tasks. Skipping them."
+                )
         except Exception as e:
             logging.warning(f"Warning: Could not read existing output: {e}")
 
     # Run evaluation
     import json as _json
     extra_body = _json.loads(args.extra_body) if args.extra_body else {}
-    async with AsyncMCPTrajectoryGenerator(args.model, extra_body=extra_body) as generator:
+    async with AsyncMCPTrajectoryGenerator(args.model, extra_body=extra_body, input_fieldnames=df.columns.tolist()) as generator:
         results_df = await generator.evaluate_dataset_async(
             df, output_csv, processed_ids, args.concurrency
         )

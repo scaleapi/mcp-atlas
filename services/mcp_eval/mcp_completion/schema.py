@@ -109,6 +109,13 @@ class ToolCallOutputMessage(BaseModel):
 Message = Union[SystemMessage, UserMessage, AssistantMessage, ToolCallOutputMessage]
 
 
+class UserContextSchema(BaseModel):
+    """User context for simulating user responses in underspecified tasks."""
+
+    original_prompt: str
+    removed_value: List[str]
+    underspecified_prompt: Optional[str] = None
+
 class RunAgentAPIRequestBody(BaseModel):
     """Request body for running MCP eval."""
 
@@ -117,6 +124,7 @@ class RunAgentAPIRequestBody(BaseModel):
     enabled_tools: List[str] = Field(alias="enabledTools")
     max_turns: int = Field(20, alias="maxTurns")
     extra_body: Optional[Dict[str, Any]] = Field(None, alias="extraBody")
+    user_context: Optional[UserContextSchema] = Field(None, alias="userContext")
 
     class Config:
         populate_by_name = True

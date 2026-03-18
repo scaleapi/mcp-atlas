@@ -755,8 +755,18 @@ async def main(args):
                 f"Limited dataset from {original_size} to {len(df_input)} tasks"
             )
 
-        # Verify required columns exist
+        # Verify required columns exist (handle both uppercase and lowercase variants)
         required_cols = ["TASK", "PROMPT", "TRAJECTORY", "GTFA_CLAIMS"]
+        # Normalize column names: check for lowercase variants
+        col_mapping = {}
+        for col in required_cols:
+            if col in df_input.columns:
+                col_mapping[col] = col
+            elif col.lower() in df_input.columns:
+                col_mapping[col] = col.lower()
+                # Rename lowercase to uppercase for consistency
+                df_input = df_input.rename(columns={col.lower(): col})
+
         missing_cols = [col for col in required_cols if col not in df_input.columns]
         if missing_cols:
             logger.error(

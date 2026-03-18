@@ -34,6 +34,56 @@ def configure_litellm():
 configure_litellm()
 
 
+def is_anthropic_model(model: str) -> bool:
+    """Check if model is an Anthropic model that supports caching."""
+    model_lower = model.lower()
+    return "anthropic/" in model_lower or "claude" in model_lower
+
+
+def add_anthropic_cache_control(
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]]
+) -> None:
+    """
+    Add Anthropic prompt caching markers to messages and tools in-place.
+
+    Anthropic allows a maximum of 4 cache control blocks.
+
+    Caching strategy:
+    1. Tools: Mark last tool for caching (1 block)
+    2. Messages: Mark the last N messages to stay under 4 total blocks
+       - If we have tools, we can cache up to 3 messages
+       - If no tools, we can cache up to 4 messages
+    """
+    # Determine how many message blocks we can cache
+    max_message_blocks = 3 if tools else 4
+
+    # Count messages with string content (these are the ones we'll cache)
+    cacheable_messages = [msg for msg in messages if msg.get("content") and isinstance(msg.get("content"), str)]
+
+    # Only cache the last N messages to stay under the limit
+    num_to_cache = min(len(cacheable_messages), max_message_blocks)
+    messages_to_cache = cacheable_messages[-num_to_cache:] if num_to_cache > 0 else []
+
+    # Transform selected messages to cacheable format
+    for msg in messages:
+        content = msg.get("content")
+        if content and isinstance(content, str) and msg in messages_to_cache:
+            msg["content"] = [
+                {
+                    "type": "text",
+                    "text": content,
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ]
+
+    # Mark last tool for caching
+    if tools and len(tools) > 0:
+        last_tool = tools[-1]
+        if "function" in last_tool:
+            last_tool["function"]["cache_control"] = {"type": "ephemeral"}
+
+
 def strip_all_additional_properties(schema: any) -> any:
     """Recursively remove all `additionalProperties` keys from the schema."""
     if isinstance(schema, dict):
@@ -75,6 +125,11 @@ async def create_completion(
     else:
         litellm_messages = [msg.model_dump() for msg in messages]
         litellm_tools = [tool.model_dump() for tool in tools]
+
+    # Add Anthropic prompt caching if applicable
+    if is_anthropic_model(model):
+        add_anthropic_cache_control(litellm_messages, litellm_tools)
+        logger.info(f"Added Anthropic cache control markers to {len(litellm_messages)} messages and {len(litellm_tools) if litellm_tools else 0} tools")
 
     # These specific models route through an internal proxy that expects the
     # "openai/" prefix in the model name. LiteLLM strips one "openai/" prefix
@@ -124,7 +179,22 @@ async def create_completion(
         return LLMResponse(message=assistant_message)
 
     except Exception as error:
-        logger.error(f"LiteLLM completion failed: {error}")
+        error_type = type(error).__name__
+        error_msg = str(error)
+
+        # Log detailed error information
+        logger.error(f"LiteLLM completion failed: {error_type}: {error_msg}")
+
+        # Check for specific rate limit errors
+        if "rate" in error_msg.lower() or "quota" in error_msg.lower() or "429" in error_msg:
+            logger.error(f"⚠️  RATE LIMIT DETECTED: {error_msg}")
+
+        # Log full exception details for debugging
+        if hasattr(error, 'response'):
+            logger.error(f"  Response: {error.response}")
+        if hasattr(error, 'status_code'):
+            logger.error(f"  Status Code: {error.status_code}")
+
         raise
 
 

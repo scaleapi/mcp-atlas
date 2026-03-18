@@ -249,3 +249,27 @@ See [LiteLLM's supported models](https://docs.litellm.ai/docs/providers) for the
 - **HTTP APIs** for tool calling and listing available tools
 - **Sample debug scripts** in `services/agent-environment/dev_scripts/debug_and_concurrency_tests/curl_scripts/` for directly testing individual MCP servers
 - **Full source code** showing the MCP servers, docker setup, agent-environment, completion service, and eval scoring script.
+
+---
+
+## LHAW Fork Notes
+
+This is a branch of [scaleapi/mcp-atlas](https://github.com/scaleapi/mcp-atlas) with modifications for the LHAW ([Long Horizon Augmented Workflow](https://arxiv.org/pdf/2602.10525)) project. We introduce a user simulator tool and adapt the MCP-Atlas codebase to run the LHAW experiments. Key changes from upstream:
+
+- **user_tool.py**: `ask_user` tool for underspecification experiments
+- **sandbox_client.py**: Optional Redis-based tool call caching (Scale-internal `sgpml-cache`)
+- **llm.py**: Anthropic prompt caching support
+- **mcp_completion_script.py**: User tool support, format handling enhancements
+- **pyproject.toml**: `sgpml-cache` as optional `[scale-cache]` extra to cache mcp tool calls
+
+### Scale-internal caching (optional)
+
+Tool call caching uses `sgpml-cache`, a Scale-internal package on AWS CodeArtifact. To enable:
+```bash
+# Install with caching support (requires Scale VPN + CodeArtifact credentials)
+uv pip install "mcp-eval[scale-cache]"
+
+# Activate via environment variable (Make sure to set the redis URL and other relevant fields)
+TOOL_CACHE_ENABLED=true
+```
+Without `sgpml-cache`, the code gracefully falls back to non-cached tool calls.

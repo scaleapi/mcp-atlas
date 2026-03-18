@@ -7,7 +7,7 @@ name = "mcp-eval"
 version = "0.1.0"
 description = "Standalone MCP evaluation environment"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
@@ -27,6 +27,12 @@ dependencies = [
     "nest-asyncio>=1.5.0",
     "datasets>=2.14.0",
 ]
+
+[project.optional-dependencies]
+# Scale-internal: Redis-based tool call caching via sgpml-cache (hosted on AWS CodeArtifact).
+# Install with: uv pip install "mcp-eval[scale-cache]"
+# Requires TOOL_CACHE_ENABLED=true to activate. Code falls back to non-cached calls if missing.
+scale-cache = ["sgpml-cache>=1.2.2"]
 
 [project.scripts]
 mcp-eval = "mcp_completion.main:main"

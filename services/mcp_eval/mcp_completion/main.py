@@ -13,6 +13,8 @@ from .agent_eval import handle_run_mcp_eval
 from .schema import RunAgentAPIRequestBody
 from .errors import MCPClientToolExecutionError
 from .config import config
+from .user_tool import USER_TOOL_ENABLED, USER_SIMULATOR_MODEL
+from .mcp_client.sandbox_client import TOOL_CACHE_ENABLED, TOOL_CACHE_REDIS_URL, TOOL_CACHE_NAMESPACE
 
 # Configure logging
 logging.basicConfig(
@@ -82,11 +84,17 @@ async def run_agent(
         raise HTTPException(status_code=500, detail={"error": str(error)})
 
     except Exception as error:
+        error_msg = str(error)
         logger.error(f"Error during MCP eval execution: {error}", exc_info=True)
+
+        # Check for rate limit indicators
+        if "rate" in error_msg.lower() or "quota" in error_msg.lower() or "429" in error_msg:
+            logger.error(f"⚠️  RATE LIMIT ERROR at FastAPI handler: {error_msg}")
+
         raise HTTPException(
             status_code=500,
             detail={
-                "error": f"Unknown error during mcp_eval: {str(error)}",
+                "error": f"Unknown error during mcp_eval: {error_msg}",
             },
         )
 
@@ -96,6 +104,15 @@ def main():
     config.validate_required_config()
 
     logger.info(f"Starting MCP Eval server on {config.HOST}:{config.PORT}")
+    if USER_TOOL_ENABLED:
+        logger.info(f"USER_TOOL_ENABLED=True - ask_user tool will be available (simulator model: {USER_SIMULATOR_MODEL})")
+    else:
+        logger.info("USER_TOOL_ENABLED=False - ask_user tool disabled")
+
+    if TOOL_CACHE_ENABLED:
+        logger.info(f"TOOL_CACHE_ENABLED=True - caching to {TOOL_CACHE_NAMESPACE}@{TOOL_CACHE_REDIS_URL}")
+    else:
+        logger.info("TOOL_CACHE_ENABLED=False - tool caching disabled")
 
     uvicorn.run(
         "mcp_completion.main:app",

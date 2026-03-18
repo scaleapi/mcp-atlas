@@ -21,6 +21,7 @@ from .schema import (
 )
 from .errors import MCPClientToolExecutionError
 from .config import config
+from .user_tool import UserContext
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,14 @@ async def run_mcp_eval(
             original_content = result.original_content
 
         except Exception as error:
-            logger.error(f"Model create completion or parsing failed: {error}")
+            error_type = type(error).__name__
+            error_msg = str(error)
+            logger.error(f"Model create completion or parsing failed: {error_type}: {error_msg}")
+
+            # Check for rate limit indicators
+            if "rate" in error_msg.lower() or "quota" in error_msg.lower() or "429" in error_msg:
+                logger.error(f"⚠️  RATE LIMIT ERROR in agent_eval: {error_msg}")
+
             # Re-raise as server error instead of graceful handling
             raise Exception(f"LLM completion failed: {error}")
 
@@ -124,9 +132,19 @@ async def handle_run_mcp_eval(
     """
     mcp_client = None
 
+    # Build user_context if provided in request
+    user_context = None
+    if body.user_context:
+        user_context = UserContext(
+            original_prompt=body.user_context.original_prompt,
+            removed_value=body.user_context.removed_value,
+            underspecified_prompt=body.user_context.underspecified_prompt,
+        )
+
     mcp_client = SandboxMCPClient(
         sandbox_url=config.MCP_SERVER_URL,
         enabled_tools=body.enabled_tools,
+        user_context=user_context,
     )
 
     async for output in run_mcp_eval(
