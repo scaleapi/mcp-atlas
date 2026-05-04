@@ -36,5 +36,5 @@ packages = ["mcp_completion"]
 
 [dependency-groups]
 dev = [
-    "black>=24.8.0",
+    "black>=26.3.1",
 ]
