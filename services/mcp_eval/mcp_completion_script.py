@@ -62,6 +62,11 @@ SERVER_URL = os.getenv("SERVER_URL", "http://localhost:3000")
 # Retry configuration
 MAX_RETRY_ATTEMPTS = int(os.getenv("MAX_RETRY_ATTEMPTS", "3"))
 
+# Client-side HTTP timeout for the /run_agent request (seconds).
+# Must be >= server-side DEFAULT_TIMEOUT to avoid the client giving up
+# before the server finishes an LLM call.
+CLIENT_TIMEOUT = float(os.getenv("CLIENT_TIMEOUT", "240"))
+
 
 def get_retry_delay(attempt: int) -> float:
     """Calculate exponential backoff delay with jitter. Base: 5s, 10s, 20s..."""
@@ -262,7 +267,8 @@ class AsyncMCPTrajectoryGenerator:
         for attempt in range(MAX_RETRY_ATTEMPTS):
             try:
                 async with self.session.post(
-                    url, json=payload, headers=headers, timeout=240
+                    url, json=payload, headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=CLIENT_TIMEOUT),
                 ) as resp:
                     if resp.status == 200:
                         try:
@@ -279,9 +285,15 @@ class AsyncMCPTrajectoryGenerator:
                             f"HTTP {resp.status} error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: {error_text}"
                         )
 
+            except asyncio.TimeoutError:
+                logging.error(
+                    f"TIMEOUT on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: "
+                    f"request exceeded {CLIENT_TIMEOUT}s"
+                )
             except Exception as e:
                 logging.error(
-                    f"Error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: {e}"
+                    f"Error on attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS} for task {taskId}: "
+                    f"{type(e).__name__}: {e}"
                 )
 
             if attempt < MAX_RETRY_ATTEMPTS - 1:
@@ -426,9 +438,15 @@ class AsyncMCPTrajectoryGenerator:
             # 3. WRITE: Save to CSV
             await self.write_result_to_csv(result_dict, output_file)
 
-            logging.info(
-                f"[{task_index + 1}/{total_tasks}] ✅ Task {task_id} completed in {result.trajectory_time:.1f}s with {result.num_retry} attempts"
-            )
+            if result.script_model_response:
+                logging.info(
+                    f"[{task_index + 1}/{total_tasks}] ✅ Task {task_id} completed in {result.trajectory_time:.1f}s with {result.num_retry} attempts"
+                )
+            else:
+                logging.warning(
+                    f"[{task_index + 1}/{total_tasks}] ❌ Task {task_id} FAILED after {result.num_retry} attempts "
+                    f"({result.trajectory_time:.1f}s) — empty response"
+                )
             return result_dict
 
         except Exception as e:

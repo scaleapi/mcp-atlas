@@ -557,15 +557,25 @@ Be rigorous but fair in your assessment. Focus on whether the response conveys t
 
 
 async def evaluate_dataframe_async(
-    df: pd.DataFrame, evaluator: CoverageEvaluator
-) -> pd.DataFrame:
-    """Asynchronously evaluates all rows in a dataframe."""
+    df: pd.DataFrame,
+    evaluator: CoverageEvaluator,
+    scored_path: str,
+    all_columns: list,
+) -> tuple:
+    """Progressively evaluates rows, appending each scored result to scored_path.
+
+    Rows that fail after all retries are skipped (not written) so they can be
+    retried on the next run.
+
+    Returns (scored_count, failed_task_ids).
+    """
     logger = logging.getLogger(__name__)
+    failed_tasks = []
+    scored_count = 0
 
     async def safe_evaluate(row_idx, row):
         try:
             claims = extract_claims(row.get("GTFA_CLAIMS", ""))
-            # Determine the correct response column
             response_col = next(
                 (
                     col
@@ -582,42 +592,30 @@ async def evaluate_dataframe_async(
             return row_idx, {"coverage_score": None, "explanation": f"Failed: {e}"}
 
     tasks = [safe_evaluate(idx, row) for idx, row in df.iterrows()]
-    results_list = [
-        await f
-        for f in tqdm(
-            asyncio.as_completed(tasks), total=len(tasks), desc="Scoring Rows"
-        )
-    ]
 
-    results_dict = {idx: res for idx, res in results_list}
+    for f in tqdm(
+        asyncio.as_completed(tasks), total=len(tasks), desc="Scoring Rows"
+    ):
+        row_idx, result = await f
 
-    out_df = df.copy()
-    result_cols = {
-        "coverage_score": [],
-        "fully_covered_claims": [],
-        "partially_covered_claims": [],
-        "total_claims": [],
-        "coverage_details_json": [],
-        "evaluation_confidence": [],
-    }
+        if result.get("coverage_score") is None:
+            task_id = df.loc[row_idx, "TASK"] if "TASK" in df.columns else str(row_idx)
+            failed_tasks.append(str(task_id))
+            continue
 
-    for idx in df.index:
-        result = results_dict.get(idx, {})
-        result_cols["coverage_score"].append(result.get("coverage_score"))
-        result_cols["fully_covered_claims"].append(
-            result.get("fully_covered_claims", 0)
-        )
-        result_cols["partially_covered_claims"].append(
-            result.get("partially_covered_claims", 0)
-        )
-        result_cols["total_claims"].append(result.get("total_claims", 0))
-        result_cols["coverage_details_json"].append(json.dumps(result))
-        result_cols["evaluation_confidence"].append(result.get("confidence", 0.0))
+        row_data = df.loc[row_idx].to_dict()
+        row_data["coverage_score"] = result.get("coverage_score")
+        row_data["fully_covered_claims"] = result.get("fully_covered_claims", 0)
+        row_data["partially_covered_claims"] = result.get("partially_covered_claims", 0)
+        row_data["total_claims"] = result.get("total_claims", 0)
+        row_data["coverage_details_json"] = json.dumps(result)
+        row_data["evaluation_confidence"] = result.get("confidence", 0.0)
 
-    for col, data in result_cols.items():
-        out_df[col] = data
+        row_df = pd.DataFrame([row_data], columns=all_columns)
+        row_df.to_csv(scored_path, mode="a", header=False, index=False)
+        scored_count += 1
 
-    return out_df
+    return scored_count, failed_tasks
 
 
 # =========================================================================
@@ -766,15 +764,65 @@ async def main(args):
 
         logger.info(f"Successfully loaded {len(df_input)} tasks")
 
-        # 2. Run scoring evaluation
-        client = AsyncLiteLLMClient(config)
-        evaluator = CoverageEvaluator(client, config)
-        df_scored = await evaluate_dataframe_async(df_input, evaluator)
-        df_scored.to_csv(scored_path, index=False)
+        # 2. Progressive scoring with resume support
+        scoring_columns = [
+            "coverage_score",
+            "fully_covered_claims",
+            "partially_covered_claims",
+            "total_claims",
+            "coverage_details_json",
+            "evaluation_confidence",
+        ]
 
-        logger.info(f"✅ Saved scored file to '{scored_path}'")
+        already_scored_tasks = set()
+        if os.path.exists(scored_path):
+            df_existing = pd.read_csv(scored_path)
+            already_scored_tasks = set(df_existing["TASK"].astype(str))
+            all_columns = list(df_existing.columns)
+            logger.info(
+                f"Resuming: {len(already_scored_tasks)} tasks already scored in '{scored_path}'"
+            )
+        else:
+            all_columns = list(df_input.columns) + scoring_columns
+            pd.DataFrame(columns=all_columns).to_csv(scored_path, index=False)
+
+        df_remaining = df_input[
+            ~df_input["TASK"].astype(str).isin(already_scored_tasks)
+        ]
+        logger.info(
+            f"{len(df_remaining)} of {len(df_input)} tasks remaining to score"
+        )
+
+        if len(df_remaining) > 0:
+            client = AsyncLiteLLMClient(config)
+            evaluator = CoverageEvaluator(client, config)
+            scored_count, failed_tasks = await evaluate_dataframe_async(
+                df_remaining, evaluator, scored_path, all_columns
+            )
+            logger.info(
+                f"✅ Scored {scored_count} tasks this run (saved to '{scored_path}')"
+            )
+            if failed_tasks:
+                logger.warning(
+                    f"⚠️  {len(failed_tasks)} tasks failed evaluation and were NOT "
+                    f"saved (re-run to retry). Task IDs: {failed_tasks[:20]}"
+                    + (
+                        f" ... and {len(failed_tasks) - 20} more"
+                        if len(failed_tasks) > 20
+                        else ""
+                    )
+                )
+        else:
+            logger.info("All tasks already scored — nothing to do.")
+
+        # Read back full scored file for stats
+        df_scored = pd.read_csv(scored_path)
         valid_scores = df_scored["coverage_score"].dropna()
-        logger.info(f"Evaluation complete. Average coverage: {valid_scores.mean():.3f}")
+        if len(valid_scores) > 0:
+            logger.info(
+                f"Overall average coverage: {valid_scores.mean():.3f} "
+                f"({len(valid_scores)} tasks)"
+            )
 
         # 3. Generate statistics and plots
         generate_statistics_and_plots(
