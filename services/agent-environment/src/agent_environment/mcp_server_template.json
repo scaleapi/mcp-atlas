@@ -48,7 +48,7 @@
       "env": {
         "ALLOWED_DIR": "/data",
         "ALLOWED_COMMANDS": "ls,cat,find",
-        "ALLOWED_FLAGS": "",
+        "ALLOWED_FLAGS": "ALL",
         "MAX_COMMAND_LENGTH": "1024",
         "COMMAND_TIMEOUT": "30",
         "ALLOW_SHELL_OPERATORS": "false"
