@@ -1,0 +1,18 @@
+# Layers API keys from .env on top of the base agent-environment image so the
+# resulting image can run without --env-file at runtime.
+#
+# Built by `make push-baked-api-keys` (see scripts/push_baked_api_keys.sh).
+# The script assembles a tiny build context in a temp dir containing just
+# .env, this Dockerfile, and entrypoint-baked.sh — so we can COPY .env
+# directly even though .env is excluded by the repo's main .dockerignore.
+FROM agent-environment:latest
+
+COPY .env /agent-environment/.env
+
+COPY entrypoint-baked.sh /agent-environment/entrypoint-baked.sh
+RUN chmod +x /agent-environment/entrypoint-baked.sh
+
+EXPOSE 1984
+
+ENTRYPOINT ["/agent-environment/entrypoint-baked.sh"]
+CMD ["uv", "run", "python", "-m", "uvicorn", "agent_environment.main:app", "--host", "0.0.0.0", "--port", "1984"]
