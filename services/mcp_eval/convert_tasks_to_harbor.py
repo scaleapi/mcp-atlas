@@ -501,9 +501,14 @@ def render_task(
         DOCKERFILE_TEMPLATE.format(image=image_used)
     )
 
-    # tests/ + solution/
-    (task_dir / "tests" / "test.sh").write_text(TEST_SH)
-    (task_dir / "solution" / "solve.sh").write_text(SOLVE_SH)
+    # tests/ + solution/ — the shell scripts have shebangs and may be executed
+    # directly, so make them executable (0o755) rather than the default 0o644.
+    test_sh = task_dir / "tests" / "test.sh"
+    test_sh.write_text(TEST_SH)
+    test_sh.chmod(0o755)
+    solve_sh = task_dir / "solution" / "solve.sh"
+    solve_sh.write_text(SOLVE_SH)
+    solve_sh.chmod(0o755)
     agent_prompt_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
     judge = AGENT_JUDGE_TEMPLATE.format(
         criteria_json=json.dumps(rubrics, indent=2),
