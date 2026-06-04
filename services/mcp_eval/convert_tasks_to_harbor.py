@@ -288,7 +288,7 @@ async def run_judge():
         text = "\\n".join(lines)
 
     parsed = json.loads(text)
-    results = parsed.get("results", parsed) if isinstance(parsed, dict) else parsed
+    results = parsed.get("results", []) if isinstance(parsed, dict) else parsed
 
     if len(results) != len(CRITERIA):
         print(f"WARNING: Judge returned {{len(results)}} results but expected {{len(CRITERIA)}}", file=sys.stderr)
@@ -349,6 +349,32 @@ DEFAULT_CATEGORY = "mcp-tool-use"
 DEFAULT_JUDGE_MODEL = "claude-sonnet-4-6"
 
 
+def _toml_escape(s: str) -> str:
+    """Escape a string for use inside a TOML basic string (``"..."``).
+
+    Handles backslash, double-quote, and the control characters TOML basic
+    strings forbid as literals (newline, carriage return, tab, and other C0
+    control chars).
+    """
+    out: list[str] = []
+    for ch in s:
+        if ch == "\\":
+            out.append("\\\\")
+        elif ch == '"':
+            out.append('\\"')
+        elif ch == "\n":
+            out.append("\\n")
+        elif ch == "\r":
+            out.append("\\r")
+        elif ch == "\t":
+            out.append("\\t")
+        elif ord(ch) < 0x20:
+            out.append(f"\\u{ord(ch):04x}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 def _toml_value(v) -> str:
     """Render a Python value as a TOML literal (str/int/float/bool/list)."""
     if isinstance(v, bool):
@@ -357,8 +383,7 @@ def _toml_value(v) -> str:
         return repr(v)
     if isinstance(v, list):
         return "[" + ", ".join(_toml_value(x) for x in v) + "]"
-    s = str(v).replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{s}"'
+    return f'"{_toml_escape(str(v))}"'
 
 
 def _toml_str_array_multiline(items: list[str], indent: int = 2) -> str:
@@ -422,6 +447,11 @@ def render_task(
 ) -> tuple[str, str]:
     """Render one task bundle. Returns (task_id, image_used)."""
     task_id = row["task_id"]
+    # task_id becomes a directory name under out_root, so reject anything that
+    # could escape it (empty, absolute, path separators, or `..` traversal).
+    if (not task_id or task_id in (".", "..") or "/" in task_id or "\\" in task_id
+            or Path(task_id).is_absolute() or ".." in Path(task_id).parts):
+        raise ValueError(f"unsafe or empty task_id: {task_id!r}")
     prompt = row["prompt"]
     system_prompt = row.get("system_prompt", "") or ""
     rubrics = row["rubrics"]
@@ -447,14 +477,14 @@ def render_task(
     tool_names = _enabled_tool_names(row.get("enabled_tools", []))
     (task_dir / "task.toml").write_text(
         TASK_TOML_TEMPLATE.format(
-            category=category,
-            task_id=task_id,
-            image=image_used,
+            category=_toml_escape(category),
+            task_id=_toml_escape(task_id),
+            image=_toml_escape(image_used),
             extra_metadata=_build_extra_metadata(row.get("metadata", {})),
             agent_timeout=agent_timeout,
             mcp_port=mcp_port,
             enabled_tools_toml=_toml_str_array_multiline(tool_names),
-            judge_model=judge_model,
+            judge_model=_toml_escape(judge_model),
         )
     )
 
@@ -539,8 +569,8 @@ def main() -> int:
         if args.limit and n >= args.limit:
             break
         try:
-            if not row.get("prompt") or not row.get("rubrics"):
-                skipped.append((row.get("task_id", "<missing>"), "empty prompt or rubrics"))
+            if not row.get("task_id") or not row.get("prompt") or not row.get("rubrics"):
+                skipped.append((row.get("task_id") or "<missing>", "empty task_id, prompt, or rubrics"))
                 continue
             _, image_used = render_task(
                 row, args.out,
