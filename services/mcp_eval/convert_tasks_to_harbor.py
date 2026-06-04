@@ -376,13 +376,18 @@ def _toml_escape(s: str) -> str:
 
 
 def _toml_value(v) -> str:
-    """Render a Python value as a TOML literal (str/int/float/bool/list)."""
+    """Render a Python value as a TOML literal (str/int/float/bool/list/dict)."""
     if isinstance(v, bool):
         return "true" if v else "false"
     if isinstance(v, (int, float)):
         return repr(v)
     if isinstance(v, list):
         return "[" + ", ".join(_toml_value(x) for x in v) + "]"
+    if isinstance(v, dict):
+        # Render a nested dict as a TOML inline table ({k = v, ...}) rather than
+        # str()-ing it into a string that holds a Python dict repr.
+        inner = ", ".join(f'"{_toml_escape(str(k))}" = {_toml_value(val)}' for k, val in v.items())
+        return "{" + inner + "}"
     return f'"{_toml_escape(str(v))}"'
 
 
@@ -482,7 +487,7 @@ def render_task(
         instruction = f"{system_prompt}\n\n---\n\n{prompt}\n"
     else:
         instruction = f"{prompt}\n"
-    (task_dir / "instruction.md").write_text(instruction)
+    (task_dir / "instruction.md").write_text(instruction, encoding="utf-8")
 
     # task.toml — the per-task tool allowlist is mirrored here for visibility;
     # the actual enforcement is via environment/enabled_tools.txt + the
@@ -498,25 +503,27 @@ def render_task(
             mcp_port=mcp_port,
             enabled_tools_toml=_toml_str_array_multiline(tool_names),
             judge_model=_toml_escape(judge_model),
-        )
+        ),
+        encoding="utf-8",
     )
 
     # environment/ — the allowlist file is COPYd into the image and read via
     # MCP_ENABLED_TOOLS_FILE so the server advertises only these tools.
     (task_dir / "environment" / "enabled_tools.txt").write_text(
-        "\n".join(tool_names) + ("\n" if tool_names else "")
+        "\n".join(tool_names) + ("\n" if tool_names else ""),
+        encoding="utf-8",
     )
     (task_dir / "environment" / "Dockerfile").write_text(
-        DOCKERFILE_TEMPLATE.format(image=image_used)
+        DOCKERFILE_TEMPLATE.format(image=image_used), encoding="utf-8"
     )
 
     # tests/ + solution/ — the shell scripts have shebangs and may be executed
     # directly, so make them executable (0o755) rather than the default 0o644.
     test_sh = task_dir / "tests" / "test.sh"
-    test_sh.write_text(TEST_SH)
+    test_sh.write_text(TEST_SH, encoding="utf-8")
     test_sh.chmod(0o755)
     solve_sh = task_dir / "solution" / "solve.sh"
-    solve_sh.write_text(SOLVE_SH)
+    solve_sh.write_text(SOLVE_SH, encoding="utf-8")
     solve_sh.chmod(0o755)
     agent_prompt_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
     # repr() (not json.dumps) so the embedded CRITERIA literal is valid Python:
@@ -525,7 +532,7 @@ def render_task(
         criteria_json=repr(rubrics),
         agent_prompt_repr=repr(agent_prompt_text),
     )
-    (task_dir / "tests" / "agent_judge.py").write_text(judge)
+    (task_dir / "tests" / "agent_judge.py").write_text(judge, encoding="utf-8")
 
     return task_id, image_used
 
@@ -534,7 +541,7 @@ def render_task(
 
 
 def iter_jsonl(path: Path):
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -549,7 +556,7 @@ def iter_jsonl(path: Path):
 
 
 def iter_csv(path: Path):
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             # CSV stores rubrics/metadata as JSON strings; parse so the rest of
