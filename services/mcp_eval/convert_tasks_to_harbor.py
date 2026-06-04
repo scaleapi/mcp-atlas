@@ -403,7 +403,7 @@ def _build_extra_metadata(meta) -> str:
     """
     if not isinstance(meta, dict):
         return ""
-    lines = [f"{k} = {_toml_value(v)}" for k, v in meta.items() if v not in (None, "", [])]
+    lines = [f'"{_toml_escape(str(k))}" = {_toml_value(v)}' for k, v in meta.items() if v not in (None, "", [])]
     return ("\n".join(lines) + "\n") if lines else ""
 
 
@@ -517,8 +517,15 @@ def iter_jsonl(path: Path):
     with path.open() as f:
         for line in f:
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            # Skip (don't abort on) a malformed line — matches iter_csv, and keeps
+            # the error inside this generator rather than escaping main()'s per-row
+            # try/except via the `for row in rows` iteration.
+            try:
                 yield json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f"Warning: skipping malformed JSONL line: {e}", file=sys.stderr)
 
 
 def iter_csv(path: Path):
