@@ -186,12 +186,12 @@ OUTPUT_SCHEMA = {{
 def find_agent_trajectory_filepath():
     agent_dir = Path("/logs/agent")
     if not agent_dir.exists():
-        print("ERROR: /logs/agent/ directory not found", file=sys.stderr)
-        sys.exit(1)
+        # Raise (not sys.exit) so __main__'s `except Exception` writes a
+        # reward.json; SystemExit is a BaseException and would bypass it.
+        raise RuntimeError("/logs/agent/ directory not found")
     txt_files = [f for f in agent_dir.iterdir() if f.is_file() and f.suffix == ".txt"]
     if not txt_files:
-        print("ERROR: No trajectory .txt files found in /logs/agent/", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError("No trajectory .txt files found in /logs/agent/")
     return str(max(txt_files, key=lambda f: f.stat().st_size))
 
 
