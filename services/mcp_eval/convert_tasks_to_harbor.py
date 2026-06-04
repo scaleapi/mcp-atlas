@@ -519,8 +519,10 @@ def render_task(
     solve_sh.write_text(SOLVE_SH)
     solve_sh.chmod(0o755)
     agent_prompt_text = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+    # repr() (not json.dumps) so the embedded CRITERIA literal is valid Python:
+    # JSON true/false/null in a rubric field would be undefined names otherwise.
     judge = AGENT_JUDGE_TEMPLATE.format(
-        criteria_json=json.dumps(rubrics, indent=2),
+        criteria_json=repr(rubrics),
         agent_prompt_repr=repr(agent_prompt_text),
     )
     (task_dir / "tests" / "agent_judge.py").write_text(judge)
