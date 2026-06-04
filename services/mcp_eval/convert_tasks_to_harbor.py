@@ -395,15 +395,24 @@ def _toml_str_array_multiline(items: list[str], indent: int = 2) -> str:
     return f"[\n{inner},\n]"
 
 
+# Keys the template already writes into [metadata]; a row's metadata dict must
+# not re-emit them or task.toml would have duplicate keys (a TOML parse error).
+_RESERVED_METADATA_KEYS = frozenset({"category", "tags", "task_id", "image"})
+
+
 def _build_extra_metadata(meta) -> str:
     """Render an optional per-row metadata dict into [metadata] TOML lines.
 
-    Keys are emitted verbatim; empty values are skipped. Anything that isn't a
-    dict is ignored.
+    Keys are emitted verbatim; reserved keys already written by the template and
+    empty values are skipped. Anything that isn't a dict is ignored.
     """
     if not isinstance(meta, dict):
         return ""
-    lines = [f'"{_toml_escape(str(k))}" = {_toml_value(v)}' for k, v in meta.items() if v not in (None, "", [])]
+    lines = [
+        f'"{_toml_escape(str(k))}" = {_toml_value(v)}'
+        for k, v in meta.items()
+        if k not in _RESERVED_METADATA_KEYS and v not in (None, "", [])
+    ]
     return ("\n".join(lines) + "\n") if lines else ""
 
 
