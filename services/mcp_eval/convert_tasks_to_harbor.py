@@ -458,6 +458,10 @@ def render_task(
     if isinstance(rubrics, str):
         rubrics = json.loads(rubrics)
     image_used = row.get("image") or image
+    # image_used is written verbatim into the Dockerfile `FROM` line; a newline
+    # would let a per-row image inject extra build instructions, so reject it.
+    if "\n" in image_used or "\r" in image_used:
+        raise ValueError(f"image contains newline characters: {image_used!r}")
 
     task_dir = out_root / task_id
     (task_dir / "environment").mkdir(parents=True, exist_ok=True)
