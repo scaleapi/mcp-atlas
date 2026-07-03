@@ -16,8 +16,13 @@ wheels/
 
 .env
 
-# Eval results (keep folders, ignore contents)
-services/mcp_eval/completion_results/*
-services/mcp_eval/evaluation_results/*
-!services/mcp_eval/completion_results/.gitkeep
-!services/mcp_eval/evaluation_results/.gitkeep
+# Node.js (services/agent-harness)
+node_modules/
+package-lock.json.bak
+
+# Logs
+logs/
+*.log
+
+# Eval run outputs (per-run dirs: outputs, logs, scoring)
+results/

@@ -1,0 +1,11 @@
+# Python deps for all eval scripts: run_eval.py, scoring, diagnostics, test_servers
+aiohttp>=3.9
+pandas>=2.0
+numpy>=1.24
+datasets>=2.14
+python-dotenv>=1.0
+tenacity>=8.0
+tqdm>=4.64
+matplotlib>=3.6
+nest-asyncio>=1.5
+httpx>=0.28

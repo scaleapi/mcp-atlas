@@ -15,9 +15,6 @@ dependencies = [
     "uvicorn>=0.34.3",
 ]
 
-[project.scripts]
-agent-environment = "agent_environment:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
