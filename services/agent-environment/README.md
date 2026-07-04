@@ -1,6 +1,6 @@
 # Agent Environment
 
-A Docker container with ~40 pre-configured Model Context Protocol (MCP) servers for AI agents.
+A Docker container with 36 pre-configured Model Context Protocol (MCP) servers for AI agents.
 
 ## Quick Start
 
@@ -20,26 +20,20 @@ A Docker container with ~40 pre-configured Model Context Protocol (MCP) servers 
    make run-docker
    ```
 
-   If you don't want to use docker, you can do `make run`, but you'll need to fix the configs that reference the `/data` dir in `src/agent_environment/mcp_server_template.json` and change that to the actual location of the ./data folder on your computer.
-   ```bash
-   # First, fix references to /data dir in mcp_server_template.json
-   make run
-   ```
-
    The container takes 1-3 minutes to start up depending on the number of MCP servers enabled. Once ready, it provides HTTP POST endpoints for `/call-tool` and `/list-tools` on port 1984.
 
 3. **Test it's working:**
    ```bash
-   ./dev_scripts/debug_and_concurrency_tests/curl_scripts/mcp__list_tools.sh
-   ./dev_scripts/debug_and_concurrency_tests/curl_scripts/mcp_git.sh
+   curl http://localhost:1984/health
+   curl -X POST http://localhost:1984/list-tools
    ```
 
 ## Available MCP Servers
 
 This project includes 36 MCP servers as configured in `src/agent_environment/mcp_server_template.json`. Some require API keys. To see required API keys and notes on how to get them, see `env.template`
 
-- **No API keys needed:** calculator, wikipedia, filesystem, git, fetch, arxiv, f1-mcp-server, etc.
-- **API keys required:** GitHub, Google Maps, Slack, Reddit, Weather, YouTube, and others
+- **No API keys needed:** calculator, wikipedia, filesystem, git, fetch, arxiv, weather, etc.
+- **API keys required:** GitHub, Google Maps, Slack, Notion, Airtable, Twelve Data, and others
 
 See `env.template` for basic information about each API key and where to get it. And see `data_exports/README.md` for info on how to upload data to online services.
 

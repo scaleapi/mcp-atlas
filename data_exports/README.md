@@ -18,8 +18,8 @@ To reproduce test results or run evaluations against known data states, you'll n
 |---------|------|-------------|
 | Airtable | https://airtable.com/appIF9byLfQwdHqE2/shr1KTZOgPl0qQmA8 | At that URL, click "Copy base" button to clone the DB |
 | Google Calendar | `calendar_mcp_eval_export.zip` | Sample calendar events (unzip as .ics) (8KB) |
-| Notion | `notion_mcp_eval_export.zip` | Sample pages and databases (13MB) |
-| MongoDB | `mongo_dump_video_game_store.zip` | Sample video game store database (unzip as folder) (486KB) |
+| Notion | `mcp-atlas-notion-data.zip` | Sample pages and databases (1MB) |
+| MongoDB | `mongo_dump_video_game_store-UNZIP-FIRST.zip` | Sample video game store database (unzip as folder) (486KB) |
 | Slack | `slack_mcp_eval_export.zip` | Sample workspace data (27KB) events timestamped for early Dec 2025 (slack free accounts hide messages older than 90 days) |
 
 ## Setup
@@ -36,7 +36,22 @@ Unzip `calendar_mcp_eval_export.zip` which contains a `.ics` file, login to your
 Create a Notion account, then go into Settings > Import, and import `mcp-atlas-notion-data.zip`. This should take maximum a few minutes, and upload 6 tables and 1 page. Confirm that all 6 tables have data after a few minutes (Notion will load the data async). If any table is empty, delete the page, and re-upload the individual CSV. Next, go to [https://www.notion.so/profile/integrations](https://www.notion.so/profile/integrations) and add a new integration (type is Internal) and get the `Internal Integration Secret` and save it as `NOTION_TOKEN` in `.env`
 
 ### MongoDB
-Create a MongoDB account, get your MongoDB connection URI, unzip `mongo_dump_video_game_store.zip`. Then upload the folder by doing like `mongorestore --uri="mongodb+srv://<username>:<password>@<cluster-url>" mongo_dump_video_game_store` . You may need to [install the mongodb CLI](https://www.mongodb.com/docs/mongocli/current/install/) if you don't have it yet. Save the connection URI as `MONGODB_CONNECTION_STRING` in `.env`
+The `mongodb` server connects to **your own** Atlas cluster via `MONGODB_CONNECTION_STRING`; restore the sample data into it:
+
+1. Create a free MongoDB Atlas cluster (the **M0 free** tier is enough).
+2. **Database Access** → add a database user with role `readWrite`. Use a letters/numbers-only password — symbols like `@` must be URL-encoded in the connection string. (Atlas users are project-scoped, so create it in the same project as the cluster.)
+3. **Network Access** → allow your IP, or `0.0.0.0/0` to allow from anywhere.
+4. Install the **MongoDB Database Tools** (these provide `mongorestore`): https://www.mongodb.com/docs/database-tools/installation/
+5. Unzip and restore (point `mongorestore` at the unzipped folder):
+   ```
+   unzip mongo_dump_video_game_store-UNZIP-FIRST.zip
+   mongorestore --uri="mongodb+srv://<cluster>.mongodb.net/" --username <user> --password '<pass>' mongo_dump_video_game_store
+   ```
+   This loads the `video_game_store` database (6 collections, ~16.8k documents).
+6. Save the connection string in `.env`:
+   ```
+   MONGODB_CONNECTION_STRING=mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/?tls=true
+   ```
 
 ### Slack
 Create a new slack workspace, then go to https://<your-slack-workspace-name>.slack.com/services/import and import `slack_mcp_eval_export.zip` . Note that free slack accounts have a 90-day limit, and messages sent older than that unfortunately won't be visible. You can modify the contents to have timestamps that are newer, or have a paid Slack account for $9 USD/month. You'll need to get `SLACK_MCP_XOXC_TOKEN` and `SLACK_MCP_XOXD_TOKEN` by following these instructions [https://github.com/korotovsky/slack-mcp-server/blob/HEAD/docs/01-authentication-setup.md](https://github.com/korotovsky/slack-mcp-server/blob/HEAD/docs/01-authentication-setup.md)

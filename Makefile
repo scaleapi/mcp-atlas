@@ -1,32 +1,28 @@
-# Makefile for Agent Environment
+# Makefile for MCP-Atlas
 
 IMAGE_NAME = agent-environment
 VERSION = 1.2.5
 GHCR_REPO = ghcr.io/scaleapi/mcp-atlas
 
-.PHONY: build run run-docker shell test run-mcp-completion push
+.PHONY: build run-docker shell push install-harness run-harness install-python run-eval test
 
-run-docker: # run docker container for mcp servers (agent-environment service)
+# ---------------------------------------------------------------------------
+# Agent Environment (docker image with the 36 MCP servers)
+# ---------------------------------------------------------------------------
+
+run-docker: # run agent-environment container on port 1984
 	docker run --rm -p 1984:1984 --env-file .env $(IMAGE_NAME):latest
 
-build: # builds agent-environment
+build: # build agent-environment locally
 	cd services/agent-environment && docker buildx build --platform linux/amd64 -t $(IMAGE_NAME) .
 	docker tag $(IMAGE_NAME):latest $(IMAGE_NAME):$(VERSION)
 
-shell: # shell for agent-environment
+shell: # shell into agent-environment
 	docker run -it --rm --env-file .env $(IMAGE_NAME):latest bash
 
-
-# Makefile for MCP Eval
-
-# Run the MCP completion server (port 3000, http post endpoint at /v2/mcp_eval/run_agent)
-# Note: This runs agent completions (not evaluation/scoring). For scoring, see mcp_evals_scores.py
-run-mcp-completion: 
-	cd services/mcp_eval && uv run python -m mcp_completion.main
-
 # Build and push multi-arch image to ghcr.io
-# Requires Docker, and may not work with Rancher Desktop
-# First do: docker login ghcr.io
+# Requires Docker (may not work with Rancher Desktop)
+# First: docker login ghcr.io
 push:
 	@echo "--- Building and pushing multi-arch $(GHCR_REPO):$(VERSION) and :latest ---"
 	cd services/agent-environment && docker buildx build --platform linux/amd64,linux/arm64 \
@@ -34,3 +30,30 @@ push:
 		-t $(GHCR_REPO):latest \
 		--push .
 	@echo "✓ Successfully pushed to $(GHCR_REPO):$(VERSION)"
+
+# ---------------------------------------------------------------------------
+# Agent Harness (TypeScript, talks to agent-environment via MCP_SANDBOX_URL)
+# ---------------------------------------------------------------------------
+
+install-harness: # install harness deps
+	cd services/agent-harness && npm install
+
+run-harness: # run the TS harness on port 3001 (uses .env in cwd)
+	cd services/agent-harness && npm run dev
+
+# ---------------------------------------------------------------------------
+# Batch eval runner (top-level run_eval.py)
+# ---------------------------------------------------------------------------
+
+install-python: # install all Python deps (run_eval, scoring, diagnostics, test_servers)
+	pip install -r requirements.txt
+
+run-eval: # run the full HuggingFace eval (usage: make run-eval MODEL=... OUTPUT=...)
+	python run_eval.py --model "$(MODEL)" --output "$(OUTPUT)"
+
+# ---------------------------------------------------------------------------
+# Tests (agent-environment unit tests; run by CI)
+# ---------------------------------------------------------------------------
+
+test: # verify mcp_server_template.json and install_mcp_packages.sh stay in sync
+	cd services/agent-environment && uv sync && uv run pytest
