@@ -368,9 +368,11 @@ export async function handleRunMCPAgentEval(body: z.infer<typeof RunAgentAPIRequ
     enabledToolsCount: body.enabledTools.length,
     enabledTools: body.enabledTools,
     messageCount: body.messages.length,
-    messages: body.messages,
     tags: body.tags,
   });
+  // Full conversation (can be large / contain sensitive content) goes to the
+  // file-only verbose log, not INFO — keeps server logs lean.
+  logger.verbose('=== NEW MCP EVAL REQUEST — full messages ===', { messages: body.messages });
 
   let mcpClient;
   if (body.image) {
