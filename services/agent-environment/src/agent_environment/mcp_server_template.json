@@ -72,7 +72,7 @@
     "ddg-search": {
       "command": "uvx",
       "args": [
-        "duckduckgo-mcp-server==0.1.1"
+        "duckduckgo-mcp-server==0.5.0"
       ]
     },
     "desktop-commander": {
@@ -108,7 +108,7 @@
     "filesystem": {
       "command": "npx",
       "args": [
-        "@modelcontextprotocol/server-filesystem@2025.11.25",
+        "@modelcontextprotocol/server-filesystem@2026.7.10",
         "/data"
       ]
     },
@@ -296,7 +296,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/Rudra-ravi/wikipedia-mcp.git@735590286fbe91f705e97eba25f8272cafba5edb",
+        "wikipedia-mcp==2.0.1",
         "wikipedia-mcp"
       ]
     }
