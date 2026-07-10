@@ -133,8 +133,8 @@ TEST_CALLS: dict[str, tuple[str, dict]] = {
         {"url": "https://httpbin.org/get"},
     ),
     "filesystem": (
-        "filesystem_list_allowed_directories",
-        {},
+        "filesystem_directory_tree",
+        {"path": "/data"},
     ),
     "git": (
         "git_git_status",
@@ -299,6 +299,14 @@ async def run_test(
                                 break
             except Exception:
                 pass
+
+        # An empty result set is a failure too (e.g. wikipedia search silently
+        # returning {"results":[]} when blocked upstream). memory/e2b/calendar
+        # legitimately return empty collections.
+        if ok and server not in ("memory", "e2b-server", "google-workspace"):
+            compact = "".join(body.split()).replace('\\"', '"')
+            if compact in ("[]", "{}", "") or '"results":[]' in compact or "Noresultswerefound" in compact:
+                ok = False
 
         preview = body.replace("\n", " ").strip()[:120]
         return Result(server, needs_key, tool, ok, elapsed,

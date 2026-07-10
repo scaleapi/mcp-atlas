@@ -110,7 +110,7 @@ Override any default per run:
 | `--num-tasks N` | all | Run only the first N tasks. |
 | `--input PATH` | HuggingFace | Use a local CSV instead of `ScaleAI/MCP-Atlas`. |
 | `--image NAME` | `ghcr.io/scaleapi/mcp-atlas:1.2.5` | Sandbox image. |
-| `--skip-health-check` | off | Skip the pre-flight sandbox health check. |
+| `--skip-health-check` | off | Skip the pre-flight health check (one real call per server; the run aborts if any server fails). |
 
 - `--extra-llm-params` sets reasoning/provider-specific options, e.g. `--extra-llm-params '{"reasoning_effort": "high"}'` (use whatever key your provider expects; default is the provider's own).
 - Harness request timeouts are env-configurable for slow models: `TOOL_CALL_TIMEOUT_MS` (60000), `LIST_TOOLS_TIMEOUT_MS` (180000), `LLM_TIMEOUT_MS` (600000).
