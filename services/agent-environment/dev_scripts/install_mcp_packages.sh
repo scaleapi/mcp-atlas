@@ -13,7 +13,7 @@ npm install -g \
     @wonderwhy-er/desktop-commander@0.2.7 \
     @e2b/mcp-server@0.2.0 \
     exa-mcp-server@0.3.10 \
-    @modelcontextprotocol/server-filesystem@2025.11.25 \
+    @modelcontextprotocol/server-filesystem@2026.7.10 \
     @modelcontextprotocol/server-google-maps@0.6.2 \
     @geobio/google-workspace-server@0.1.0 \
     @translated/lara-mcp@0.0.11 \
@@ -33,11 +33,12 @@ echo "Installing UVX MCP server packages..."
 uv tool install arxiv-mcp-server==0.2.11
 uv tool install mcp-server-calculator==0.2.0
 uv tool install cli-mcp-server==0.2.5
-uv tool install duckduckgo-mcp-server==0.1.1
+uv tool install duckduckgo-mcp-server==0.5.0
 uv tool install mcp-server-fetch==2025.4.7
 uv tool install mcp-server-git==2025.7.1
 uv tool install osm-mcp-server==0.1.1
 uv tool install oxylabs-mcp==0.4.1
 uv tool install mcp-server-twelve-data==0.2.5
+uv tool install wikipedia-mcp==2.0.1
 
 echo "All UVX/NPX MCP packages installation complete. Ignored any that install from github!" 
