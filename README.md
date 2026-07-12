@@ -42,8 +42,8 @@ Allocate at least 8 GB (10 GB+ recommended) to Docker.
 
 **Option A — prebuilt image (recommended):**
 ```bash
-docker pull ghcr.io/scaleapi/mcp-atlas:1.2.5
-docker tag ghcr.io/scaleapi/mcp-atlas:1.2.5 agent-environment:latest
+docker pull ghcr.io/scaleapi/mcp-atlas:1.2.6
+docker tag ghcr.io/scaleapi/mcp-atlas:1.2.6 agent-environment:latest
 make run-docker
 ```
 
@@ -78,7 +78,7 @@ curl -X POST http://localhost:3001/v2/mcp_eval/run_agent \
     "model": "openai/gpt-4o",
     "messages": [{"role": "user", "content": "What is the first word of the file at /data/Barber Shop.csv?"}],
     "enabledTools": ["filesystem_read_text_file"],
-    "image": "ghcr.io/scaleapi/mcp-atlas:1.2.5"
+    "image": "ghcr.io/scaleapi/mcp-atlas:1.2.6"
   }' | jq
 ```
 
@@ -109,7 +109,7 @@ Override any default per run:
 | `--timeout S` | `1800` | Per-task timeout, in seconds. |
 | `--num-tasks N` | all | Run only the first N tasks. |
 | `--input PATH` | HuggingFace | Use a local CSV instead of `ScaleAI/MCP-Atlas`. |
-| `--image NAME` | `ghcr.io/scaleapi/mcp-atlas:1.2.5` | Sandbox image. |
+| `--image NAME` | `ghcr.io/scaleapi/mcp-atlas:1.2.6` | Sandbox image. |
 | `--skip-health-check` | off | Skip the pre-flight health check (one real call per server; the run aborts if any server fails). |
 
 - `--extra-llm-params` sets reasoning/provider-specific options, e.g. `--extra-llm-params '{"reasoning_effort": "high"}'` (use whatever key your provider expects; default is the provider's own).
@@ -148,11 +148,11 @@ A single sandbox handles concurrent tasks comfortably, and **you can run several
 
 ```bash
 # Stack A — sandbox on 1984, harness on 3001
-docker run -d -p 1984:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.5
+docker run -d -p 1984:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.6
 PORT=3001 MCP_SANDBOX_URL=http://localhost:1984 make run-harness
 
 # Stack B — sandbox on 1985, harness on 3002
-docker run -d -p 1985:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.5
+docker run -d -p 1985:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.6
 PORT=3002 MCP_SANDBOX_URL=http://localhost:1985 make run-harness
 
 # Run each half of the dataset against its own harness, then concatenate
