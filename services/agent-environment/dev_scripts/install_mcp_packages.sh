@@ -12,7 +12,7 @@ npm install -g \
     @upstash/context7-mcp@1.0.14 \
     @wonderwhy-er/desktop-commander@0.2.7 \
     @e2b/mcp-server@0.2.0 \
-    exa-mcp-server@0.3.10 \
+    exa-mcp-server@3.2.1 \
     @modelcontextprotocol/server-filesystem@2026.7.10 \
     @modelcontextprotocol/server-google-maps@0.6.2 \
     @geobio/google-workspace-server@0.1.0 \
