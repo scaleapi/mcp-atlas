@@ -49,7 +49,7 @@ csv.field_size_limit(sys.maxsize)
 HARNESS_URL = os.getenv("HARNESS_URL", "http://localhost:3001")
 SANDBOX_URL = os.getenv("MCP_SANDBOX_URL", "http://localhost:1984")
 DEFAULT_DATASET = "ScaleAI/MCP-Atlas"
-DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.6"
+DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.7"
 
 
 def _tool_names(items: list[Any]) -> list[str]:
