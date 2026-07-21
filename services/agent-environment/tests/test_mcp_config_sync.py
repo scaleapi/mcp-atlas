@@ -266,6 +266,38 @@ def test_package_sync():
 
         raise AssertionError("\n".join(error_msg))
 
+    # Reverse direction: catch packages left in the script that are no longer
+    # in the template (bloat / stale removals). The template is the source of
+    # truth, so anything the script installs must be justified by it.
+    extra_npx = script_npx_set - config_regular_npx
+    extra_uvx = script_uvx_set - config_regular_uvx
+
+    if extra_npx or extra_uvx:
+        error_msg = [
+            "❌ Install script has packages not present in template "
+            "(template is source of truth):",
+            "",
+        ]
+        if extra_npx:
+            error_msg.append("NPX packages in script but not in template:")
+            error_msg.extend([f"  - {pkg}" for pkg in sorted(extra_npx)])
+            error_msg.append("")
+        if extra_uvx:
+            error_msg.append("UVX packages in script but not in template:")
+            error_msg.extend([f"  - {pkg}" for pkg in sorted(extra_uvx)])
+            error_msg.append("")
+
+        error_msg.extend(
+            [
+                "🔧 TO FIX: Remove the stale packages from "
+                "dev_scripts/install_mcp_packages.sh",
+                "   - Or add them back to mcp_server_template.json if still needed",
+                "   - Template (mcp_server_template.json) is the source of truth",
+            ]
+        )
+
+        raise AssertionError("\n".join(error_msg))
+
     print(
         f"✅ All {len(config_regular_npx)} NPX packages from template are in install script!"
     )
