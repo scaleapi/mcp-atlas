@@ -56,10 +56,3 @@ This depends on https://github.com/jlowin/fastmcp
 By default, caching is enabled. If a request is successful, it will be cached, and subsequent identical requests will return the cached value.
 
 At high throughputs, some of the MCP servers may not perform as well or may freeze up. Replicas are recommended for high throughput.
-
-## Pinned MCP server versions
-
-`mcp_server_template.json` is the source of truth for MCP package pins. `dev_scripts/install_mcp_packages.sh` must stay in sync (`pytest tests/test_mcp_config_sync.py`).
-
-The filesystem server must be `@modelcontextprotocol/server-filesystem@2025.12.18` or newer. `@2025.11.25` fails MCP output validation on `directory_tree` (see [issue #34](https://github.com/scaleapi/mcp-atlas/issues/34) and [modelcontextprotocol/servers#3110](https://github.com/modelcontextprotocol/servers/issues/3110)). `tests/test_filesystem_pin.py` enforces the minimum pin.
-
