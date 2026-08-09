@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ToolCallOutputContentItemSchema } from './types';
 
 // ============================================================================
 // Message Schemas
@@ -31,19 +32,6 @@ export const AssistantMessageSchema = z.object({
     .nullish(),
   reasoning_content: z.string().nullish(),
 });
-
-const ToolCallOutputContentItemSchema = z.union([
-  z.object({
-    type: z.literal('text'),
-    text: z.string(),
-  }),
-  z.object({
-    type: z.literal('image'),
-    image_url: z.object({
-      url: z.string(),
-    }),
-  }),
-]);
 
 const ToolCallOutputMessageSchema = z.object({
   role: z.literal('tool'),
