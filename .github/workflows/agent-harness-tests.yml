@@ -15,6 +15,9 @@ on:
       - "services/agent-harness/**"
       - ".github/workflows/agent-harness-tests.yml"
 
+permissions:
+  contents: read
+
 jobs:
   harness:
     runs-on: ubuntu-latest
@@ -26,9 +29,14 @@ jobs:
       - name: Install dependencies
         working-directory: services/agent-harness
         run: npm ci
-      - name: Typecheck
+      - name: Typecheck src
         working-directory: services/agent-harness
         run: npm run build
+      # npm test runs through tsx, which strips types without checking them,
+      # so the tests need their own tsc pass.
+      - name: Typecheck tests
+        working-directory: services/agent-harness
+        run: npm run typecheck
       - name: Run harness tests
         working-directory: services/agent-harness
         run: npm test

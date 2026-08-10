@@ -33,10 +33,26 @@ export const AssistantMessageSchema = z.object({
   reasoning_content: z.string().nullish(),
 });
 
+// Inbound message history stays narrow: the harness forwards these to the LLM
+// verbatim, so only Chat-Completions shapes are accepted here. Raw MCP blocks
+// are widened on the response side only (CallToolResponseSchema).
+const InboundToolContentItemSchema = z.union([
+  z.object({
+    type: z.literal('text'),
+    text: z.string(),
+  }),
+  z.object({
+    type: z.literal('image'),
+    image_url: z.object({
+      url: z.string(),
+    }),
+  }),
+]);
+
 const ToolCallOutputMessageSchema = z.object({
   role: z.literal('tool'),
   tool_call_id: z.string(),
-  content: z.array(ToolCallOutputContentItemSchema).default([]),
+  content: z.array(InboundToolContentItemSchema).default([]),
   metadata: z.record(z.any()).optional(),
 });
 

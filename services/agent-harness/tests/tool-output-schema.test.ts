@@ -1,26 +1,19 @@
 /**
- * Guard for the tool-result content-block union.
- *
- * A successful MCP tool call that returns a non-text block used to fail
- * CallToolResponseSchema.parse in the agent loop, and the ZodError was
- * truncated at its first newline, so the model received the literal string
- * "Error: [" and a working tool call was scored as a failure.
- *
- * Servers pinned in mcp_server_template.json that return these blocks:
- *   met-museum@0.9.2         get-museum-object, returnImage defaults to true  -> text + image
- *   desktop-commander@0.2.7  read_file / read_multiple_files on an image      -> text + image
- *   filesystem@2026.7.10     read_media_file                                  -> image | audio | resource
+ * Guard for the tool-result content-block union. A successful MCP tool call that
+ * returned a non-text block used to fail CallToolResponseSchema.parse, and the
+ * ZodError was truncated at its first newline, so the model received the literal
+ * string "Error: [" and a working tool call was scored as a failure.
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CallToolResponseSchema } from '../src/mcp-agent/schema';
+import { CallToolResponseSchema, RunAgentAPIRequestBodySchema } from '../src/mcp-agent/schema';
 import { formatToolCallError } from '../src/mcp-agent/errors';
 import { describeNonTextContent } from '../src/mcp-agent/helpers/tool-content';
 
 const BASE64_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGMAAQAABQAB';
 
-test('text + image result parses (met-museum, desktop-commander)', () => {
+test('text + image result parses (desktop-commander read_file)', () => {
   const parsed = CallToolResponseSchema.parse({
     content: [
       { type: 'text', text: 'Image file: /data/repos/storyteller/example/example-1.png (image/png)\n' },
@@ -48,7 +41,7 @@ test('audio, resource_link and embedded resource results parse (filesystem read_
   assert.deepEqual(parsed.content, blocks);
 });
 
-test('OpenAI image_url content is still accepted on inbound message history', () => {
+test('OpenAI image_url content is still accepted on tool results', () => {
   const parsed = CallToolResponseSchema.parse({
     content: [{ type: 'image', image_url: { url: 'https://example.com/a.png' } }],
     isError: false,
@@ -63,17 +56,35 @@ test('genuinely invalid content is still rejected', () => {
   );
 });
 
-test('a ZodError is summarized rather than truncated to "["', () => {
-  let zodError: unknown;
+function parseError(content: unknown[]): string {
   try {
-    CallToolResponseSchema.parse({ content: [{ type: 'nonsense', foo: 1 }], isError: false });
+    CallToolResponseSchema.parse({ content, isError: false });
   } catch (error) {
-    zodError = error;
+    return formatToolCallError(error);
   }
+  return assert.fail('expected a ZodError');
+}
 
-  const message = formatToolCallError(zodError);
-  assert.notEqual(message, '[');
-  assert.match(message, /content\.0/);
+test('a union failure reports the real reason, not "Invalid input"', () => {
+  const message = parseError([{ type: 'text', text: 'ok' }, { type: 'nonsense', foo: 1 }]);
+
+  assert.doesNotMatch(message, /Invalid input/);
+  assert.match(message, /content\.1: unrecognized type "nonsense"/);
+  assert.match(message, /expected one of .*"resource_link"/);
+});
+
+test('a union failure inside a matching block names the missing field', () => {
+  const message = parseError([{ type: 'image', data: BASE64_PNG }]);
+
+  assert.doesNotMatch(message, /Invalid input/);
+  assert.match(message, /content\.0\.mimeType: Required/);
+});
+
+test('many bad blocks do not produce an unbounded error string', () => {
+  const message = parseError(Array.from({ length: 40 }, () => ({ type: 'bogus' })));
+
+  assert.ok(message.length < 400, `error string was ${message.length} chars`);
+  assert.match(message, /\(40 issues\)$/);
 });
 
 test('non-Zod errors keep their first line', () => {
@@ -81,9 +92,32 @@ test('non-Zod errors keep their first line', () => {
   assert.equal(formatToolCallError(error), 'Failed to call tool foo: connection refused');
 });
 
+test('inbound tool messages stay narrow: raw MCP blocks are rejected', () => {
+  const body = (content: unknown[]) => ({
+    model: 'openai/gpt-4o',
+    enabledTools: [],
+    messages: [{ role: 'tool', tool_call_id: 'call_1', content }],
+  });
+
+  // Would otherwise be forwarded to the provider verbatim as megabytes of base64.
+  assert.throws(() => RunAgentAPIRequestBodySchema.parse(body([
+    { type: 'image', data: BASE64_PNG, mimeType: 'image/png' },
+  ])));
+  assert.throws(() => RunAgentAPIRequestBodySchema.parse(body([
+    { type: 'resource', resource: { uri: 'file:///data/x.bin', blob: BASE64_PNG } },
+  ])));
+
+  const parsed = RunAgentAPIRequestBodySchema.parse(body([
+    { type: 'text', text: 'hi' },
+    { type: 'image', image_url: { url: 'https://example.com/a.png' } },
+  ]));
+  assert.equal((parsed.messages[0] as any).content.length, 2);
+});
+
 test('non-text blocks become text so the LLM payload stays chat-completions shaped', () => {
+  const textItem = { type: 'text', text: 'Image file: /data/logo.png (image/png)\n' };
   const described = describeNonTextContent([
-    { type: 'text', text: 'Image file: /data/logo.png (image/png)\n' },
+    textItem,
     { type: 'image', data: BASE64_PNG, mimeType: 'image/png' },
     { type: 'audio', data: BASE64_PNG, mimeType: 'audio/wav' },
     { type: 'resource_link', uri: 'file:///data/report.pdf', name: 'report.pdf', mimeType: 'application/pdf' },
@@ -94,7 +128,7 @@ test('non-text blocks become text so the LLM payload stays chat-completions shap
   ]);
 
   assert.deepEqual(described, [
-    { type: 'text', text: 'Image file: /data/logo.png (image/png)\n' },
+    textItem,
     { type: 'text', text: '[image content omitted: image/png]' },
     { type: 'text', text: '[audio content omitted: audio/wav]' },
     { type: 'text', text: '[resource_link content omitted: application/pdf file:///data/report.pdf]' },
@@ -103,4 +137,6 @@ test('non-text blocks become text so the LLM payload stays chat-completions shap
     { type: 'text', text: '[resource_link content omitted: unknown type file:///data/unknown]' },
     { type: 'image', image_url: { url: 'https://example.com/a.png' } },
   ]);
+  // Text-only results must pass through untouched, not be copied.
+  assert.equal(described[0], textItem);
 });

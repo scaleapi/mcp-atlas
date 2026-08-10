@@ -1,8 +1,5 @@
-/**
- * Tool results reach the model as an OpenAI Chat-Completions payload, which
- * carries text parts only. Replace non-text MCP blocks with a one-line
- * descriptor so an image/audio/resource result still reads as a success.
- */
+// Chat-Completions tool messages carry text parts only, so replace non-text MCP
+// blocks with a one-line descriptor instead of failing the whole tool result.
 export function describeNonTextContent(content: any[]): any[] {
   return content.map((item: any) => {
     if (item.type === 'text' || item.image_url) return item;
