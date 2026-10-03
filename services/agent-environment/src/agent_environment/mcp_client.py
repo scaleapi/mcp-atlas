@@ -1,5 +1,6 @@
 from fastmcp import Client
 from fastmcp.client.logging import LogMessage
+from .client_roots import parse_client_roots
 from .logger import create_logger
 import json
 import random
@@ -147,7 +148,11 @@ async def log_handler(message: LogMessage) -> None:
             logger.info(data)
 
 
+client_roots = parse_client_roots()
+logger.info(f"MCP client roots: {client_roots}")
+
 client: Client = Client(
     config,
     log_handler=log_handler,
+    roots=client_roots,
 )
