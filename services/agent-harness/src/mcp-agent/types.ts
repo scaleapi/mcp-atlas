@@ -35,10 +35,39 @@ export const ToolCallSchema = z.object({
 
 export type ToolCall = z.infer<typeof ToolCallSchema>;
 
+// MCP tool results are content blocks from the MCP spec (text, image, audio,
+// resource_link, resource); the trailing image_url variant is the pre-existing
+// OpenAI chat shape, kept so already-shaped content still validates.
+// Hand-rolled rather than reusing the SDK's ContentBlockSchema: that is a Zod 4
+// schema and this package pins zod@^3, so composing the two throws at parse time.
 export const ToolCallOutputContentItemSchema = z.union([
   z.object({
     type: z.literal('text'),
     text: z.string(),
+  }),
+  z.object({
+    type: z.literal('image'),
+    data: z.string(),
+    mimeType: z.string(),
+  }),
+  z.object({
+    type: z.literal('audio'),
+    data: z.string(),
+    mimeType: z.string(),
+  }),
+  z.object({
+    type: z.literal('resource_link'),
+    uri: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    mimeType: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('resource'),
+    resource: z.union([
+      z.object({ uri: z.string(), mimeType: z.string().optional(), text: z.string() }),
+      z.object({ uri: z.string(), mimeType: z.string().optional(), blob: z.string() }),
+    ]),
   }),
   z.object({
     type: z.literal('image'),

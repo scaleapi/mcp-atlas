@@ -1,0 +1,42 @@
+name: agent-harness tests
+
+# Typechecks the TypeScript harness and runs its unit tests on every PR that
+# touches it. Without this the harness has no CI at all, so schema regressions
+# (see services/agent-harness/tests/) only surface during an eval run.
+
+on:
+  pull_request:
+    paths:
+      - "services/agent-harness/**"
+      - ".github/workflows/agent-harness-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/agent-harness/**"
+      - ".github/workflows/agent-harness-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        working-directory: services/agent-harness
+        run: npm ci
+      - name: Typecheck src
+        working-directory: services/agent-harness
+        run: npm run build
+      # npm test runs through tsx, which strips types without checking them,
+      # so the tests need their own tsc pass.
+      - name: Typecheck tests
+        working-directory: services/agent-harness
+        run: npm run typecheck
+      - name: Run harness tests
+        working-directory: services/agent-harness
+        run: npm test
