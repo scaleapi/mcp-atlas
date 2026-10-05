@@ -53,6 +53,8 @@ Check `env.template` for all available API key configurations.
 ## Implementation details
 This depends on https://github.com/jlowin/fastmcp
 
+The FastMCP client advertises filesystem roots to MCP servers (default: `/data`). Without roots, filesystem-related servers can log `Failed to request initial roots from client` during `list_tools` ([issue #17](https://github.com/scaleapi/mcp-atlas/issues/17), [#18](https://github.com/scaleapi/mcp-atlas/issues/18)). Override with comma-separated `MCP_CLIENT_ROOTS` in `.env`.
+
 By default, caching is enabled. If a request is successful, it will be cached, and subsequent identical requests will return the cached value.
 
 At high throughputs, some of the MCP servers may not perform as well or may freeze up. Replicas are recommended for high throughput.
