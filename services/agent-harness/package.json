@@ -9,7 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "@types/lodash": "^4.17.23",
     "axios": "^1.20.0",
     "dotenv": "^17.2.4",
