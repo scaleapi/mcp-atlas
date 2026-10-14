@@ -13,6 +13,8 @@ import {
 import { getAgentCompletionStrategy } from './completion-strategy';
 import { MCPClient, createMCPClient } from '../helpers/mcp-client';
 import { SandboxMCPClient } from '../helpers/mcp-client/sandbox-client';
+import { formatToolCallError } from '../errors';
+import { describeNonTextContent } from '../helpers/tool-content';
 import { logger } from '../../logger';
 import { config } from '../../config';
 import { z } from 'zod';
@@ -257,9 +259,10 @@ async function* runMcpAgent({
             JSON.parse(toolCall.function.arguments),
           );
           const toolCallResult = CallToolResponseSchema.parse(response);
+          const textContent = describeNonTextContent(toolCallResult.content);
           const cappedContent = toolOutputCap
-            ? capToolContent(toolCallResult.content, toolOutputCap)
-            : toolCallResult.content;
+            ? capToolContent(textContent, toolOutputCap)
+            : textContent;
           const toolCallMessage = {
             role: 'tool' as const,
             content: cappedContent,
@@ -269,7 +272,7 @@ async function* runMcpAgent({
           yield { type: 'message', data: toolCallMessage };
         } catch (error) {
           // Tool call failed — feed error back to model so it can recover
-          const errorMsg = ((error as any).message || String(error)).split('\n')[0];
+          const errorMsg = formatToolCallError(error);
           logger.error(`[${taskId}] Tool call failed, feeding error back to model`, {
             toolCall: toolCall.function.name,
             error: errorMsg,
