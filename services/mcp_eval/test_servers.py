@@ -124,6 +124,13 @@ TEST_CALLS: dict[str, tuple[str, dict]] = {
         "ddg-search_search",
         {"query": "python programming"},
     ),
+    "parallel-search": (
+        "parallel-search_web_search",
+        {
+            "objective": "Find the official Python documentation.",
+            "search_queries": ["Python official documentation"],
+        },
+    ),
     "desktop-commander": (
         "desktop-commander_list_directory",
         {"path": "/data"},

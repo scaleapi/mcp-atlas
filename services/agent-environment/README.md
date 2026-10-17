@@ -1,6 +1,7 @@
 # Agent Environment
 
-A Docker container with 36 pre-configured Model Context Protocol (MCP) servers for AI agents.
+A Docker container with 36 benchmark Model Context Protocol (MCP) servers for AI agents,
+plus an optional hosted connection for custom tasks.
 
 ## Quick Start
 
@@ -30,7 +31,10 @@ A Docker container with 36 pre-configured Model Context Protocol (MCP) servers f
 
 ## Available MCP Servers
 
-This project includes 36 MCP servers as configured in `src/agent_environment/mcp_server_template.json`. Some require API keys. To see required API keys and notes on how to get them, see `env.template`
+The template in `src/agent_environment/mcp_server_template.json` defines 36 benchmark
+servers plus the optional Parallel Search MCP connection described below. Some
+benchmark servers require API keys. To see required API keys and notes on how to
+get them, see `env.template`.
 
 - **No API keys needed:** calculator, wikipedia, filesystem, git, fetch, arxiv, weather, etc.
 - **API keys required:** GitHub, Google Maps, Slack, Notion, Airtable, Twelve Data, and others
@@ -45,6 +49,33 @@ To run only specific servers (useful for testing without API keys):
 # In your .env file:
 ENABLED_SERVERS=calculator,wikipedia,filesystem,git,fetch
 ```
+
+### Optional Parallel Search MCP
+
+For custom web-research tasks, [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+provides free web search and page fetching without an account or API key. Anonymous
+search uses Fast mode. Enable its built-in Streamable HTTP connection explicitly:
+
+```bash
+# In your .env file, then rebuild and restart the sandbox:
+ENABLED_SERVERS=parallel-search,fetch
+```
+
+Run `make build && make run-docker` from the repository root. `ENABLED_SERVERS`
+selects exactly the listed servers, so include any other servers your task needs.
+Leaving it empty keeps the existing default servers and API-key auto-detection;
+Parallel is never enabled automatically.
+
+With multiple servers enabled, the harness discovers `parallel-search_web_search`
+and `parallel-search_web_fetch`. Include those names in your custom task's
+`ENABLED_TOOLS` or harness request's `enabledTools`. `web_search` takes `objective`
+and `search_queries`; `web_fetch` takes `urls`. If Parallel is the only enabled
+server, FastMCP exposes the unprefixed names `web_search` and `web_fetch` instead.
+
+This optional hosted endpoint is separate from the 36 version-pinned benchmark
+servers. Its implementation and web results can change. Use custom tasks and
+record the server/tool selection; results with this tool set are not equivalent
+to the published MCP-Atlas benchmark. Anonymous service limits apply.
 
 ## API Keys
 

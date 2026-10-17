@@ -238,6 +238,13 @@
         "OXYLABS_PASSWORD": "${OXYLABS_PASSWORD}"
       }
     },
+    "parallel-search": {
+      "transport": "http",
+      "url": "https://search.parallel.ai/mcp",
+      "headers": {
+        "User-Agent": "MCP-Atlas (https://github.com/scaleapi/mcp-atlas)"
+      }
+    },
     "pubmed": {
       "command": "uvx",
       "args": [

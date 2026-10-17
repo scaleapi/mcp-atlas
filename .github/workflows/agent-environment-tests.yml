@@ -27,8 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install pytest
-        run: python -m pip install --upgrade pip pytest
+      - uses: astral-sh/setup-uv@v6
       - name: Run MCP pin-sync tests
         working-directory: services/agent-environment
-        run: python -m pytest tests/ -v
+        run: uv run --locked --no-dev --with pytest==8.4.1 python -m pytest tests/ -v
