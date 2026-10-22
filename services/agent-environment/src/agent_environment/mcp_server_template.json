@@ -122,7 +122,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "https://github.com/geobio/smitheryai-mcp-servers-github"
+        "https://github.com/geobio/smitheryai-mcp-servers-github#68368436034fb0003a6d8ed91afc9d0a64142b84"
       ],
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
@@ -242,7 +242,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/geobio/PubMed-MCP-Server.git",
+        "git+https://github.com/geobio/PubMed-MCP-Server.git@e452cfc7d23cd4c0248c177d7814df3d9e82ea3b",
         "python",
         "-m",
         "pubmed_server"
@@ -272,14 +272,14 @@
       "command": "npx",
       "args": [
         "-y",
-        "https://github.com/geobio/smitheryai-mcp-servers-weather"
+        "https://github.com/geobio/smitheryai-mcp-servers-weather#3474c7841d00f5f40c087c5d2188a5c0f41bd134"
       ]
     },
     "weather-data": {
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/geobio/weather-mcp-server",
+        "git+https://github.com/geobio/weather-mcp-server@70b6a7c8183c8a3acc175f786f4b7be9c2ba66e4",
         "weather-mcp-server"
       ],
       "env": {

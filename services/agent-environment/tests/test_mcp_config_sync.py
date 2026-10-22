@@ -308,5 +308,26 @@ def test_package_sync():
     print("✅ Install script matches template (source of truth)!")
 
 
+def test_git_packages_pinned_to_commit():
+    """Git-sourced packages are fetched at container start, so they must pin a full commit SHA.
+
+    Without a pin, every start runs whatever is at the repo's default-branch HEAD.
+    npx form: https://github.com/<owner>/<repo>#<sha>; uvx form: git+https://...@<sha>.
+    """
+    import re
+
+    sha = re.compile(r"[#@][0-9a-f]{40}$")
+    config_packages = extract_packages_from_config()
+    git_packages = [
+        pkg
+        for pkgs in config_packages.values()
+        for pkg in pkgs
+        if pkg.startswith(("https://", "git+", "github:"))
+    ]
+    unpinned = [pkg for pkg in git_packages if not sha.search(pkg)]
+    assert not unpinned, f"Git packages must pin a 40-char commit SHA: {unpinned}"
+
+
 if __name__ == "__main__":
     test_package_sync()
+    test_git_packages_pinned_to_commit()
