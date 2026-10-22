@@ -48,6 +48,28 @@ import nest_asyncio
 nest_asyncio.apply()
 
 
+# Leading characters that make spreadsheet apps evaluate a cell as a formula.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+# Join keys are left untouched so re-reading/merging the CSV keeps working.
+_CSV_KEY_COLUMNS = {"TASK", "task_id"}
+
+
+def neutralize_csv_formulas(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with formula-triggering string cells prefixed by a quote.
+
+    Model, tool and judge text is untrusted; without this a cell like '=HYPERLINK(...)'
+    is evaluated when the CSV is opened in Excel/LibreOffice/Google Sheets.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if col in _CSV_KEY_COLUMNS or pd.api.types.is_numeric_dtype(df[col]):
+            continue
+        df[col] = df[col].map(
+            lambda v: "'" + v if isinstance(v, str) and v.startswith(_FORMULA_PREFIXES) else v
+        )
+    return df
+
+
 # =========================================================================
 # 1. CONFIGURATION AND SETUP
 # =========================================================================
@@ -148,7 +170,7 @@ def merge_gtfa_with_model_data(gtfa_file: str, model_data_file: str, model_name:
             if empty_claims.any():
                 logger.warning(f"  {empty_claims.sum()} rows have empty GTFA_CLAIMS — will score as 0")
 
-        df_merged.to_csv(output_file, index=False)
+        neutralize_csv_formulas(df_merged).to_csv(output_file, index=False)
         logger.info(f"  Saved merged data to '{output_file}'. Shape: {df_merged.shape}")
         return output_file
     except FileNotFoundError as e:
@@ -587,7 +609,7 @@ async def run_scoring_evaluation(input_csv: str, output_csv: str, config: Evalua
     evaluator = CoverageEvaluator(client, config)
     
     df_scored = await evaluate_dataframe_async(df_input, evaluator, model_name)
-    df_scored.to_csv(output_csv, index=False)
+    neutralize_csv_formulas(df_scored).to_csv(output_csv, index=False)
     
     logger.info(f"✅ Saved scored file to '{output_csv}'")
     valid_scores = df_scored["coverage_score"].dropna()
