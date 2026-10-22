@@ -170,7 +170,8 @@ def merge_gtfa_with_model_data(gtfa_file: str, model_data_file: str, model_name:
             if empty_claims.any():
                 logger.warning(f"  {empty_claims.sum()} rows have empty GTFA_CLAIMS — will score as 0")
 
-        neutralize_csv_formulas(df_merged).to_csv(output_file, index=False)
+        # Not neutralized: this intermediate is re-read for scoring and must stay verbatim.
+        df_merged.to_csv(output_file, index=False)
         logger.info(f"  Saved merged data to '{output_file}'. Shape: {df_merged.shape}")
         return output_file
     except FileNotFoundError as e:
