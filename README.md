@@ -52,7 +52,7 @@ make run-docker
 make build && make run-docker
 ```
 
-Neither bakes in API keys — both inject them at runtime from `.env`. Startup takes 1+ minute; wait for `Uvicorn running on http://0.0.0.0:1984`. The 20 no-key servers are enabled by default; key-gated servers turn on when their keys are present. Verify:
+Neither bakes in API keys — both inject them at runtime from `.env`. Startup takes 1+ minute; wait for `Uvicorn running on http://0.0.0.0:1984`. The 20 no-key servers are enabled by default; key-gated servers turn on when their keys are present. The port is published on `127.0.0.1` only: the sandbox API is unauthenticated and exposes code execution plus any keyed SaaS tools, so don't publish it on other interfaces. Verify:
 
 ```bash
 curl -s http://localhost:1984/enabled-servers | jq -c
@@ -148,11 +148,11 @@ A single sandbox handles concurrent tasks comfortably, and **you can run several
 
 ```bash
 # Stack A — sandbox on 1984, harness on 3001
-docker run -d -p 1984:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.7
+docker run -d -p 127.0.0.1:1984:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.7
 PORT=3001 MCP_SANDBOX_URL=http://localhost:1984 make run-harness
 
 # Stack B — sandbox on 1985, harness on 3002
-docker run -d -p 1985:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.7
+docker run -d -p 127.0.0.1:1985:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.7
 PORT=3002 MCP_SANDBOX_URL=http://localhost:1985 make run-harness
 
 # Run each half of the dataset against its own harness, then concatenate
