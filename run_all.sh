@@ -118,6 +118,22 @@ LOGDIR="$(mktemp -d)"
 echo "==> Logs: $LOGDIR"
 
 # 1. Sandbox -----------------------------------------------------------------
+# A sandbox started before the loopback-only change publishes the unauthenticated
+# API on every interface; don't silently reuse it.
+publicly_published() {
+  docker ps --filter "publish=$SANDBOX_PORT" --format '{{.Names}} {{.Ports}}' 2>/dev/null \
+    | grep -E "(0\.0\.0\.0|\[?::\]?):${SANDBOX_PORT}->" || true
+}
+PUBLIC="$(publicly_published)"
+if [[ -n "$PUBLIC" ]]; then
+  if [[ "${PUBLIC%% *}" == "$SANDBOX_NAME" ]]; then
+    echo "==> Sandbox '$SANDBOX_NAME' is published on all interfaces; recreating it on 127.0.0.1"
+    docker rm -f "$SANDBOX_NAME" >/dev/null 2>&1 || true
+  else
+    die "a container publishes :$SANDBOX_PORT on all interfaces (${PUBLIC}); stop it or restart it with -p 127.0.0.1:${SANDBOX_PORT}:1984"
+  fi
+fi
+
 if sandbox_healthy; then
   echo "==> Sandbox already healthy on :$SANDBOX_PORT — reusing it"
 else
