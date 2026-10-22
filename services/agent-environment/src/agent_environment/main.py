@@ -37,9 +37,12 @@ TOOL_NAME_MAPPINGS = {
     "MongoDB_list-databases": "mongodb_list-databases",
 }
 
-# Cache whitelist - only these servers will have their responses cached
+# Cache whitelist - only these servers will have their responses cached.
+# Stateful, write-capable or code-execution servers are excluded: the cache is
+# shared across tasks and keyed only on tool+args, so it would replay one
+# task's results (or stale state) to another.
 CACHEABLE_SERVERS = {
-    "airtable",
+    # "airtable",
     "alchemy",
     # "arxiv",
     "brave-search",
@@ -48,28 +51,28 @@ CACHEABLE_SERVERS = {
     "clinicaltrialsgov-mcp-server",
     "context7",
     "ddg-search",
-    "desktop-commander",
-    "e2b-server",
+    # "desktop-commander",
+    # "e2b-server",
     "exa",
     "fetch",
     # "filesystem",
     # "git",
-    "github",
+    # "github",
     "google-maps",
-    "google-workspace",
+    # "google-workspace",
     "lara-translate",
-    "mcp-code-executor",
-    "mcp-server-code-runner",
-    "memory",
+    # "mcp-code-executor",
+    # "mcp-server-code-runner",
+    # "memory",
     "met-museum",
-    "mongodb",
+    # "mongodb",
     "national-parks",
-    "notion",
+    # "notion",
     "open-library",
     "osm-mcp-server",
     "oxylabs",
     "pubmed",
-    "slack",
+    # "slack",
     "twelvedata",
     "weather",
     "weather-data",
@@ -175,7 +178,11 @@ async def call_tool(
 
             # Cache the successful result only for cacheable tools
             content_blocks = result.content
-            if should_cache_tool(mapped_tool_name) and cache_key is not None:
+            if (
+                request.use_cache
+                and should_cache_tool(mapped_tool_name)
+                and cache_key is not None
+            ):
                 # TTL is 70-100% of default TTL, to avoid all items expiring at the same time
                 random_ttl = int(CACHE_TTL_HOURS * 60 * 60 * random.uniform(0.7, 1.0))
                 tool_cache.set(cache_key, content_blocks, ttl=random_ttl)
