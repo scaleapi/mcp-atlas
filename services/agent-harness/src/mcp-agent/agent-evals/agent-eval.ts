@@ -158,7 +158,7 @@ async function* runMcpAgent({
   // Reset sandbox state disabled — the agent-environment image
   // does not implement /reset-state (returns 404), causing noisy errors.
   // Re-enable if the Docker image adds this endpoint.
-  const transformedTools = _transformToolCalls(tools);
+  const transformedTools = _transformToolCalls(tools.filter(tool => !tool.disabled));
   const allMessages: Message[] = [...messages];
 
   // Track whether the loop exhausted maxTurns without a natural break.
