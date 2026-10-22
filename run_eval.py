@@ -253,6 +253,17 @@ def write_run_config(args: argparse.Namespace) -> None:
     print(f"Wrote run config to {path}")
 
 
+# Leading characters that make spreadsheet apps evaluate a cell as a formula.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def neutralize_csv_formula(value: Any) -> Any:
+    """Prefix a quote so model-controlled text isn't run as a spreadsheet formula."""
+    if isinstance(value, str) and value.startswith(_FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
 async def run_all(args: argparse.Namespace) -> None:
     tasks = load_tasks(args.input, args.num_tasks)
 
@@ -292,7 +303,11 @@ async def run_all(args: argparse.Namespace) -> None:
             async def task_and_write(task: dict[str, Any]) -> dict[str, str]:
                 result = await run_one_task(session, task, args, sem)
                 async with out_lock:
-                    writer.writerow(result)
+                    # task_id is left as-is so resume matching keeps working.
+                    writer.writerow({
+                        k: v if k == "task_id" else neutralize_csv_formula(v)
+                        for k, v in result.items()
+                    })
                     fout.flush()
                 return result
 
