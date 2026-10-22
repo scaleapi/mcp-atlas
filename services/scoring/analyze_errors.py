@@ -8,6 +8,7 @@ Usage:
     python analyze_errors.py <output_csv_file>
 """
 
+import ast
 import pandas as pd
 import sys
 import json
@@ -47,8 +48,17 @@ def analyze_error_distribution(csv_path):
 
         if errors and errors != '[]':
             try:
-                # Parse errors (handle both string and actual list)
-                error_list = eval(errors) if isinstance(errors, str) else errors
+                # Parse errors (handle both string and actual list). Never eval():
+                # the column comes from an untrusted CSV. Accept JSON or Python-literal reprs.
+                if isinstance(errors, str):
+                    try:
+                        error_list = json.loads(errors)
+                    except json.JSONDecodeError:
+                        error_list = ast.literal_eval(errors)
+                else:
+                    error_list = errors
+                if not isinstance(error_list, list):
+                    continue
 
                 if error_list:
                     tasks_with_errors += 1
