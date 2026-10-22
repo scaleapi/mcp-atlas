@@ -39,6 +39,7 @@ import sys
 from typing import Any
 
 import aiohttp
+from dotenv import dotenv_values
 
 # Trajectories (raw_conversation_history) routinely exceed Python's default CSV
 # field-size limit; raise it so resume — which reads the existing output CSV to
@@ -48,8 +49,15 @@ csv.field_size_limit(sys.maxsize)
 
 HARNESS_URL = os.getenv("HARNESS_URL", "http://localhost:3001")
 SANDBOX_URL = os.getenv("MCP_SANDBOX_URL", "http://localhost:1984")
-# Sent as a bearer token when the harness is started with HARNESS_AUTH_TOKEN.
-HARNESS_AUTH_TOKEN = os.getenv("HARNESS_AUTH_TOKEN", "")
+# Sent as a bearer token when the harness is started with HARNESS_AUTH_TOKEN. The
+# harness reads it from the repo-root .env, so fall back to that file when it isn't
+# exported (an exported value wins).
+HARNESS_AUTH_TOKEN = os.getenv("HARNESS_AUTH_TOKEN") or (
+    dotenv_values(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")).get(
+        "HARNESS_AUTH_TOKEN"
+    )
+    or ""
+)
 DEFAULT_DATASET = "ScaleAI/MCP-Atlas"
 DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.7"
 
