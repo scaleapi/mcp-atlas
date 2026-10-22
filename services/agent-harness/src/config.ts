@@ -5,6 +5,16 @@
 export const config = {
   // Server configuration
   port: process.env.PORT || 3001,
+  // Bind address. Loopback by default: run_agent drives the operator's LLM key and
+  // sandbox tools, so it must not be reachable from other hosts unless protected.
+  host: process.env.HOST || '127.0.0.1',
+  // Optional shared secret. When set, every request except /health must send
+  // `Authorization: Bearer <HARNESS_AUTH_TOKEN>`. Required when HOST is not loopback.
+  authToken: process.env.HARNESS_AUTH_TOKEN || '',
+
+  // Server-side ceilings for caller-supplied loop limits.
+  maxTurnsLimit: Number(process.env.MAX_TURNS_LIMIT) || 512,
+  maxToolCallsLimit: Number(process.env.MAX_TOOL_CALLS_LIMIT) || 1000,
 
   // LLM proxy configuration (any LiteLLM-compatible endpoint)
   llmBaseUrl: process.env.LLM_BASE_URL || '',
@@ -33,4 +43,7 @@ if (config.llmApiKeys.length === 0) {
 }
 if (!config.llmBaseUrl) {
   throw new Error('LLM_BASE_URL environment variable is required')
+}
+if (!['127.0.0.1', 'localhost', '::1'].includes(config.host) && !config.authToken) {
+  throw new Error(`HARNESS_AUTH_TOKEN is required when binding to a non-loopback HOST (${config.host})`)
 }

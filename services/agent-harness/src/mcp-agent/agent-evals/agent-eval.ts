@@ -392,14 +392,14 @@ export async function handleRunMCPAgentEval(body: z.infer<typeof RunAgentAPIRequ
     mcpClient,
     model: body.model,
     messages: body.messages,
-    maxTurns: body.max_turns,
+    maxTurns: body.max_turns && Math.min(body.max_turns, config.maxTurnsLimit),
     strategy: body.strategy,
     llmBaseUrl: body.llm_base_url,
     extraLlmParams: body.extra_llm_params,
     taskId,
     contextWindowManagement: body.context_window_management,
     toolOutputCap: body.tool_output_cap,
-    maxToolCalls: body.max_tool_calls,
+    maxToolCalls: body.max_tool_calls && Math.min(body.max_tool_calls, config.maxToolCallsLimit),
   });
 }
 

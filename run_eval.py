@@ -48,6 +48,8 @@ csv.field_size_limit(sys.maxsize)
 
 HARNESS_URL = os.getenv("HARNESS_URL", "http://localhost:3001")
 SANDBOX_URL = os.getenv("MCP_SANDBOX_URL", "http://localhost:1984")
+# Sent as a bearer token when the harness is started with HARNESS_AUTH_TOKEN.
+HARNESS_AUTH_TOKEN = os.getenv("HARNESS_AUTH_TOKEN", "")
 DEFAULT_DATASET = "ScaleAI/MCP-Atlas"
 DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.7"
 
@@ -158,6 +160,7 @@ async def run_one_task(
             async with session.post(
                 f"{HARNESS_URL}/v2/mcp_eval/run_agent",
                 json=body,
+                headers={"Authorization": f"Bearer {HARNESS_AUTH_TOKEN}"} if HARNESS_AUTH_TOKEN else None,
                 timeout=aiohttp.ClientTimeout(total=args.timeout),
             ) as resp:
                 if resp.status != 200:

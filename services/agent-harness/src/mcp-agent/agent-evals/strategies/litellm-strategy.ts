@@ -48,13 +48,14 @@ export class LiteLLMAgentCompletionStrategy
     const apiKey = overrideApiKey || CHAT_LLM_API_KEY;
 
     const payload: Record<string, any> = {
-      model: request.model,
-      messages: await this.addSystemPromptIfNeeded(request.messages, request.model),
-      tools: stripUnsupportedSchemaFields(request.tools, request.model),
       // Minimal, standard OpenAI Chat-Completions payload — no provider-specific
       // fields — so it works with any compatible endpoint (OpenAI, vLLM/TGI/SGLang,
       // LiteLLM proxy). Add provider extras (incl. LiteLLM `metadata`) via extra_llm_params.
+      // Extras are spread first so they can't override model/messages/tools.
       ...extraLlmParamsRest,
+      model: request.model,
+      messages: await this.addSystemPromptIfNeeded(request.messages, request.model),
+      tools: stripUnsupportedSchemaFields(request.tools, request.model),
     };
 
     // Log summary to console, full payload to file only
