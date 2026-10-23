@@ -44,6 +44,28 @@ import nest_asyncio
 nest_asyncio.apply()
 
 
+# Leading characters that make spreadsheet apps evaluate a cell as a formula.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+# Join keys are left untouched so re-reading/merging the CSV keeps working.
+_CSV_KEY_COLUMNS = {"TASK", "task_id"}
+
+
+def neutralize_csv_formulas(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with formula-triggering string cells prefixed by a quote.
+
+    Model, tool and judge text is untrusted; without this a cell like '=HYPERLINK(...)'
+    is evaluated when the CSV is opened in Excel/LibreOffice/Google Sheets.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if col in _CSV_KEY_COLUMNS or pd.api.types.is_numeric_dtype(df[col]):
+            continue
+        df[col] = df[col].map(
+            lambda v: "'" + v if isinstance(v, str) and v.startswith(_FORMULA_PREFIXES) else v
+        )
+    return df
+
+
 # =========================================================================
 # 1. CONFIGURATION AND SETUP
 # =========================================================================
@@ -1047,7 +1069,7 @@ async def main(args):
             'diagnosis_all_failures', 'diagnosis_confidence', 'diagnosis_summary',
         ]
         output_columns = [c for c in output_columns if c in df_diagnosed.columns]
-        df_diagnosed[output_columns].to_csv(diagnosis_csv, index=False)
+        neutralize_csv_formulas(df_diagnosed[output_columns]).to_csv(diagnosis_csv, index=False)
         logger.info(f"Saved diagnosis CSV: {diagnosis_csv}")
 
         # Step 3: Create summary JSON with examples and narrative
