@@ -125,13 +125,9 @@ publicly_published() {
     | grep -E "(0\.0\.0\.0|\[?::\]?):${SANDBOX_PORT}->" || true
 }
 PUBLIC="$(publicly_published)"
+# Refuse rather than delete it: another evaluation may be using that container.
 if [[ -n "$PUBLIC" ]]; then
-  if [[ "${PUBLIC%% *}" == "$SANDBOX_NAME" ]]; then
-    echo "==> Sandbox '$SANDBOX_NAME' is published on all interfaces; recreating it on 127.0.0.1"
-    docker rm -f "$SANDBOX_NAME" >/dev/null 2>&1 || true
-  else
-    die "a container publishes :$SANDBOX_PORT on all interfaces (${PUBLIC}); stop it or restart it with -p 127.0.0.1:${SANDBOX_PORT}:1984"
-  fi
+  die "container '${PUBLIC%% *}' publishes :$SANDBOX_PORT on all interfaces; once nothing is using it, run 'docker rm -f ${PUBLIC%% *}' and re-run (it will be recreated on 127.0.0.1)"
 fi
 
 if sandbox_healthy; then
