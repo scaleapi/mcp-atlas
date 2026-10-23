@@ -69,14 +69,14 @@ export const RunAgentAPIRequestBodySchema = z.object({
   model: z.string(),
   messages: z.array(MessageSchema),
   enabledTools: z.array(z.string()),
-  max_turns: z.number().optional(),
+  max_turns: z.number().int().positive().optional(),
   strategy: z.string().optional(),
   task_id: z.string().optional(),
   llm_base_url: z.string().optional(),
   extra_llm_params: z.record(z.string(), z.any()).optional(),
   context_window_management: z.enum(['compact']).optional(),
   tool_output_cap: z.number().optional(),
-  max_tool_calls: z.number().optional(),
+  max_tool_calls: z.number().int().positive().optional(),
 });
 
 export const CallToolAPIRequestBodySchema = z.object({

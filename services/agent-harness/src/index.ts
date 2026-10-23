@@ -7,6 +7,7 @@
 // Load environment variables (MUST be first import)
 import './env'
 
+import crypto from 'crypto'
 import express from 'express'
 import { config } from './config'
 import { logger } from './logger'
@@ -15,7 +16,31 @@ import { RunAgentAPIRequestBodySchema } from './mcp-agent/schema'
 
 const app = express()
 
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function tokenMatches(header: string | undefined): boolean {
+  const expected = Buffer.from(`Bearer ${config.authToken}`)
+  const actual = Buffer.from(header || '')
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected)
+}
+
 // Middleware
+// Access control: with HARNESS_AUTH_TOKEN set, require the bearer token. Without it
+// (loopback-only default), reject non-loopback Host headers to block DNS rebinding.
+app.use((req, res, next) => {
+  if (req.path === '/health') return next()
+  if (config.authToken) {
+    if (!tokenMatches(req.headers.authorization)) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    return next()
+  }
+  const hostname = (req.headers.host || '').replace(/:\d+$/, '')
+  if (!LOOPBACK_HOSTNAMES.has(hostname)) {
+    return res.status(403).json({ error: 'Forbidden host' })
+  }
+  next()
+})
 app.use(express.json({ limit: '50mb' }))
 
 // Health check endpoint
@@ -62,8 +87,8 @@ app.post('/v2/mcp_eval/run_agent', async (req, res) => {
 })
 
 // Start server
-app.listen(config.port, () => {
-  logger.info(`MCP Evaluation Server listening on port ${config.port}`)
+app.listen(Number(config.port), config.host, () => {
+  logger.info(`MCP Evaluation Server listening on ${config.host}:${config.port}`)
   logger.info(`LLM Base URL: ${config.llmBaseUrl}`)
   logger.info(`MCP Sandbox URL: ${config.mcpSandboxUrl}`)
 })
