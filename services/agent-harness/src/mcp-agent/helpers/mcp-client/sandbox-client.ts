@@ -190,6 +190,15 @@ export class SandboxMCPClient extends MCPClient {
   }
 
   public async callTool(toolName: string, args: any): Promise<ToolCallOutput> {
+    // Enforce the same allowlist/denylist applied in listTools: the model can emit
+    // any tool name, not just the advertised ones. An empty enabledTools means all tools.
+    if (this.enabledTools && this.enabledTools.length > 0 && !this.enabledTools.includes(toolName)) {
+      throw new Error(`Tool ${toolName} is not enabled for this task`);
+    }
+    if ((this.disabledTools ?? []).includes(toolName)) {
+      throw new Error(`Tool ${toolName} is disabled`);
+    }
+
     try {
       mcpClientMetrics.incr('tool_call', 1, {
         image: this.image,
