@@ -20,12 +20,15 @@ RUN mkdir -p /data
 RUN mv /agent-environment/data/* /data/ 2>/dev/null || true
 RUN rm -rf /agent-environment/data
 
-# Install git submodules from CSV to specified directories
-RUN while IFS=',' read -r url sha path; do \
+# Install git submodules from CSV to specified directories.
+# Fail the build if any clone/checkout fails or HEAD doesn't match the pinned SHA.
+RUN set -e; \
+    while IFS=',' read -r url sha path; do \
     echo "Installing $url at $sha to $path"; \
     rm -rf "$path" 2>/dev/null || true; \
-    git clone "$url" "$path"; \
-    cd "$path" && git checkout "$sha"; \
+    git clone "$url" "$path" || exit 1; \
+    git -C "$path" checkout "$sha" || exit 1; \
+    [ "$(git -C "$path" rev-parse HEAD)" = "$sha" ] || { echo "SHA mismatch for $path"; exit 1; }; \
 done < /data/repos/git_submodule_info.csv
 
 # Set up MCP code executor workspace (depends on copied repo structure)
