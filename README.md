@@ -52,7 +52,7 @@ make run-docker
 make build && make run-docker
 ```
 
-Neither bakes in API keys — both inject them at runtime from `.env`. Startup takes 1+ minute; wait for `Uvicorn running on http://0.0.0.0:1984`. The 20 no-key servers are enabled by default; key-gated servers turn on when their keys are present. The port is published on `127.0.0.1` only: the sandbox API is unauthenticated and exposes code execution plus any keyed SaaS tools, so don't publish it on other interfaces. Verify:
+Neither bakes in API keys — both inject them at runtime from `.env`. Startup takes 1+ minute; wait for `Uvicorn running on http://0.0.0.0:1984`. The 20 no-key servers are enabled by default; key-gated servers turn on when their keys are present. Verify:
 
 ```bash
 curl -s http://localhost:1984/enabled-servers | jq -c
