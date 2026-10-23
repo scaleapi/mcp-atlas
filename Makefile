@@ -11,7 +11,7 @@ GHCR_REPO = ghcr.io/scaleapi/mcp-atlas
 # ---------------------------------------------------------------------------
 
 run-docker: # run agent-environment container on port 1984
-	docker run --rm -p 1984:1984 --env-file .env $(IMAGE_NAME):latest
+	docker run --rm -p 127.0.0.1:1984:1984 --env-file .env $(IMAGE_NAME):latest
 
 build: # build agent-environment locally
 	cd services/agent-environment && docker buildx build --platform linux/amd64 -t $(IMAGE_NAME) .

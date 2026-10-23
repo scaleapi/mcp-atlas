@@ -123,7 +123,7 @@ if sandbox_healthy; then
 else
   echo "==> Starting sandbox '$SANDBOX_NAME' on :$SANDBOX_PORT (first start takes ~1 min)"
   docker rm -f "$SANDBOX_NAME" >/dev/null 2>&1 || true
-  docker run -d --rm --name "$SANDBOX_NAME" -p "${SANDBOX_PORT}:1984" --env-file .env "$IMAGE" >/dev/null
+  docker run -d --rm --name "$SANDBOX_NAME" -p "127.0.0.1:${SANDBOX_PORT}:1984" --env-file .env "$IMAGE" >/dev/null
   STARTED_SANDBOX=1
   if ! wait_until "sandbox :$SANDBOX_PORT" 240 sandbox_healthy; then
     echo "---- last sandbox logs ----"; docker logs "$SANDBOX_NAME" 2>&1 | tail -40
