@@ -70,6 +70,13 @@ for c in docker curl; do have "$c" || die "'$c' not found on PATH."; done
 [[ -f .env ]] || die ".env not found. Run: cp env.template .env  (then set LLM_API_KEY and LLM_BASE_URL)"
 grep -Eq '^LLM_API_KEY=.+'  .env || die "LLM_API_KEY is empty in .env (required)."
 grep -Eq '^LLM_BASE_URL=.+' .env || die "LLM_BASE_URL is empty in .env (required)."
+# The sandbox API requires a shared bearer token; generate one on first run.
+if ! grep -Eq '^SANDBOX_AUTH_TOKEN=.+' .env; then
+  [[ -z "$(tail -c1 .env)" ]] || echo >> .env
+  echo "SANDBOX_AUTH_TOKEN=$(openssl rand -hex 32 2>/dev/null || "$PYTHON" -c 'import secrets; print(secrets.token_hex(32))')" >> .env
+  echo "==> Generated SANDBOX_AUTH_TOKEN in .env"
+fi
+SANDBOX_AUTH_TOKEN="$(grep -E '^SANDBOX_AUTH_TOKEN=' .env | tail -1 | cut -d= -f2-)"
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 || die \
 "Docker image '$IMAGE' not found. Either:
@@ -131,7 +138,7 @@ else
   fi
 fi
 echo "==> Enabled servers:"
-curl -s "http://localhost:${SANDBOX_PORT}/enabled-servers" 2>/dev/null | { have jq && jq -c || cat; } || true
+curl -s -H "Authorization: Bearer ${SANDBOX_AUTH_TOKEN}" "http://localhost:${SANDBOX_PORT}/enabled-servers" 2>/dev/null | { have jq && jq -c || cat; } || true
 
 # 2. Harness -----------------------------------------------------------------
 if harness_healthy; then

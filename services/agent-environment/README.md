@@ -22,10 +22,13 @@ A Docker container with 36 pre-configured Model Context Protocol (MCP) servers f
 
    The container takes 1-3 minutes to start up depending on the number of MCP servers enabled. Once ready, it provides HTTP POST endpoints for `/call-tool` and `/list-tools` on port 1984.
 
+   Every endpoint except `/` and `/health` requires `Authorization: Bearer <SANDBOX_AUTH_TOKEN>`, and the service won't start without `SANDBOX_AUTH_TOKEN` set. `make run-docker` adds a random one to `.env` if it's missing.
+
 3. **Test it's working:**
    ```bash
+   export $(grep -E '^SANDBOX_AUTH_TOKEN=' .env)
    curl http://localhost:1984/health
-   curl -X POST http://localhost:1984/list-tools
+   curl -X POST -H "Authorization: Bearer $SANDBOX_AUTH_TOKEN" http://localhost:1984/list-tools
    ```
 
 ## Available MCP Servers

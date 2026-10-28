@@ -3,9 +3,10 @@ import contextlib
 import mcp
 from typing import Any, AsyncGenerator, Dict
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 import mcp.types
+from .auth import load_token, make_auth_dependency
 from .mcp_client import client, config
 from .logger import create_logger
 from cacheout import Cache
@@ -102,7 +103,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+# Every endpoint except the liveness probes requires the shared secret; this
+# raises (so uvicorn exits) when SANDBOX_AUTH_TOKEN is unset.
+require_token = make_auth_dependency(load_token())
+
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(require_token)])
 
 
 @app.get("/")

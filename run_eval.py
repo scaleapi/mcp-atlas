@@ -58,6 +58,13 @@ HARNESS_AUTH_TOKEN = os.getenv("HARNESS_AUTH_TOKEN") or (
     )
     or ""
 )
+# Bearer token the sandbox requires on its API (same .env fallback as above).
+SANDBOX_AUTH_TOKEN = os.getenv("SANDBOX_AUTH_TOKEN") or (
+    dotenv_values(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")).get(
+        "SANDBOX_AUTH_TOKEN"
+    )
+    or ""
+)
 DEFAULT_DATASET = "ScaleAI/MCP-Atlas"
 DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.7"
 
@@ -215,15 +222,26 @@ async def check_sandbox_health() -> None:
     fails a real test call. Bypass with --skip-health-check.
     """
     url = SANDBOX_URL.rstrip("/") + "/enabled-servers"
+    headers = {"Authorization": f"Bearer {SANDBOX_AUTH_TOKEN}"} if SANDBOX_AUTH_TOKEN else None
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+            async with session.get(
+                url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
+                status = resp.status
                 data = await resp.json()
     except Exception as exc:
         print(
             f"ERROR: MCP sandbox not reachable at {SANDBOX_URL} "
             f"({exc.__class__.__name__}: {exc}). Start it with `make run-docker` "
             f"(or set MCP_SANDBOX_URL), or pass --skip-health-check to bypass.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if status == 401:
+        print(
+            "ERROR: MCP sandbox rejected the request (401). Set SANDBOX_AUTH_TOKEN in .env "
+            "to the value the sandbox was started with.",
             file=sys.stderr,
         )
         sys.exit(1)

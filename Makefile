@@ -4,13 +4,21 @@ IMAGE_NAME = agent-environment
 VERSION = 1.2.7
 GHCR_REPO = ghcr.io/scaleapi/mcp-atlas
 
-.PHONY: build run-docker shell push install-harness run-harness install-python run-eval test
+.PHONY: build sandbox-token run-docker shell push install-harness run-harness install-python run-eval test
 
 # ---------------------------------------------------------------------------
 # Agent Environment (docker image with the 36 MCP servers)
 # ---------------------------------------------------------------------------
 
-run-docker: # run agent-environment container on port 1984
+sandbox-token: # add a random SANDBOX_AUTH_TOKEN to .env if it has none (the sandbox requires it)
+	@touch .env
+	@if ! grep -Eq '^SANDBOX_AUTH_TOKEN=.+' .env; then \
+		[ -z "$$(tail -c1 .env)" ] || echo >> .env; \
+		echo "SANDBOX_AUTH_TOKEN=$$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')" >> .env; \
+		echo "Generated SANDBOX_AUTH_TOKEN in .env"; \
+	fi
+
+run-docker: sandbox-token # run agent-environment container on port 1984
 	docker run --rm -p 127.0.0.1:1984:1984 --env-file .env $(IMAGE_NAME):latest
 
 build: # build agent-environment locally

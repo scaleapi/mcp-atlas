@@ -33,6 +33,7 @@ Set in `.env`:
 - `LLM_BASE_URL` — any OpenAI Chat-Completions-compatible endpoint (a [LiteLLM](https://docs.litellm.ai/) proxy, OpenAI, Anthropic-via-LiteLLM, Azure, or a self-hosted vLLM/TGI server).
 - `EVAL_LLM_API_KEY` / `EVAL_LLM_BASE_URL` / `EVAL_LLM_MODEL` — *optional* judge settings for scoring and diagnostics; fall back to `LLM_*`, with the judge defaulting to `gemini/gemini-3.1-pro-preview`.
 - `MCP_SANDBOX_URL` — *optional*, defaults to `http://localhost:1984`.
+- `SANDBOX_AUTH_TOKEN` — shared secret the sandbox API requires (it runs tools with your API keys). `make run-docker` and `run_all.sh` generate one in `.env` if it's empty; the harness, `run_eval.py` and `test_servers.py` read it from `.env` and send it as a bearer token.
 
 > The agent harness was rewritten from Python to TypeScript in v2.0.0 — see [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -55,7 +56,8 @@ make build && make run-docker
 Neither bakes in API keys — both inject them at runtime from `.env`. Startup takes 1+ minute; wait for `Uvicorn running on http://0.0.0.0:1984`. The 20 no-key servers are enabled by default; key-gated servers turn on when their keys are present. Verify:
 
 ```bash
-curl -s http://localhost:1984/enabled-servers | jq -c
+export $(grep -E '^SANDBOX_AUTH_TOKEN=' .env)
+curl -s -H "Authorization: Bearer $SANDBOX_AUTH_TOKEN" http://localhost:1984/enabled-servers | jq -c
 ```
 
 ### 3. Start the agent harness (new terminal)
@@ -160,7 +162,7 @@ HARNESS_URL=http://localhost:3001 python run_eval.py --input tasks_part_a.csv --
 HARNESS_URL=http://localhost:3002 python run_eval.py --input tasks_part_b.csv --output out_b.csv --model "<model>"
 ```
 
-**Point at an orchestrator (scales furthest).** Because the harness reaches the sandbox solely through `MCP_SANDBOX_URL`, you can point it at a service that provisions an ephemeral sandbox per task — no harness changes; any HTTP endpoint implementing the agent-environment API works.
+**Point at an orchestrator (scales furthest).** Because the harness reaches the sandbox solely through `MCP_SANDBOX_URL`, you can point it at a service that provisions an ephemeral sandbox per task — no harness changes; any HTTP endpoint implementing the agent-environment API works. The harness sends `Authorization: Bearer $SANDBOX_AUTH_TOKEN` on every call, so the orchestrator should check it (and pass it to the sandboxes it starts).
 
 > **One rule when adding sandboxes:** keep all of a task's tool calls on the same sandbox. Per-call load-balancing across replicas breaks stateful tools (filesystem, memory, git, MongoDB), which assume a consistent view within a task.
 

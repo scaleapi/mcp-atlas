@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import re
 import time
 import random
@@ -51,6 +52,23 @@ def load_env_keys(env_path: Path) -> set[str]:
         if value.strip():
             keys.add(name.strip())
     return keys
+
+
+def load_env_value(env_path: Path, key: str) -> str:
+    """Return KEY's value from the environment, else from .env ("" if unset).
+
+    Like docker --env-file and dotenv, the last assignment in .env wins.
+    """
+    if os.environ.get(key):
+        return os.environ[key]
+    if not env_path.exists():
+        return ""
+    found = ""
+    for line in env_path.read_text().splitlines():
+        name, sep, value = line.strip().partition("=")
+        if sep and name.strip() == key:
+            found = value.strip().strip("\"'")
+    return found
 
 
 # ── Load server list from template ───────────────────────────────────────────
@@ -350,7 +368,10 @@ async def main(timeout: float, concurrency: int, only_server: str | None) -> Non
         async with sem:
             return await run_test(client, *args)
 
-    async with httpx.AsyncClient() as client:
+    # The sandbox requires its bearer token on /call-tool.
+    token = load_env_value(ENV_PATH, "SANDBOX_AUTH_TOKEN")
+    headers = {"Authorization": f"Bearer {token}"} if token else None
+    async with httpx.AsyncClient(headers=headers) as client:
         tasks = [bounded(client, *t, timeout) for t in tests]
         results: list[Result] = await asyncio.gather(*tasks)
 
