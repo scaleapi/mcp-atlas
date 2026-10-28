@@ -36,6 +36,9 @@ export const config = {
 
   // MCP sandbox URL (e.g. http://localhost:1984 when running agent-environment locally)
   mcpSandboxUrl: process.env.MCP_SANDBOX_URL || 'http://localhost:1984',
+  // Shared secret for the sandbox API, sent as `Authorization: Bearer <SANDBOX_AUTH_TOKEN>`.
+  // The sandbox refuses to start without it; both read it from the repo-root .env.
+  sandboxAuthToken: process.env.SANDBOX_AUTH_TOKEN || '',
 
   // Logging configuration
   logLevel: process.env.LOG_LEVEL || 'info',

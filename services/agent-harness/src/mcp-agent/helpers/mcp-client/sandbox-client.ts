@@ -20,6 +20,11 @@ const redisCache = {
 };
 // MCP sandbox URL — points to a running agent-environment container
 const MCP_SANDBOX_URL = config.mcpSandboxUrl;
+// Headers for every sandbox API request; the sandbox rejects calls without the bearer token.
+const SANDBOX_HEADERS: Record<string, string> = {
+  'Content-Type': 'application/json',
+  ...(config.sandboxAuthToken ? { Authorization: `Bearer ${config.sandboxAuthToken}` } : {}),
+};
 // Stub metrics collector (not needed for local eval)
 const mcpClientMetrics = {
   incr: (..._args: any[]) => {},
@@ -86,6 +91,10 @@ export class SandboxMCPClient extends MCPClient {
 
     const sandboxUrl = MCP_SANDBOX_URL;
 
+    if (!SANDBOX_HEADERS.Authorization) {
+      logger.warn('SANDBOX_AUTH_TOKEN is not set; the sandbox will reject tool calls with 401');
+    }
+
     await waitForSandboxHealth({
       url: sandboxUrl,
       sandboxId: 'local',
@@ -145,9 +154,7 @@ export class SandboxMCPClient extends MCPClient {
       const response = await promiseWithTimeout(
         fetch(this.sandboxUrl + '/reset-state', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: SANDBOX_HEADERS,
         }),
         this.toolCallTimeout,
       );
@@ -216,9 +223,7 @@ export class SandboxMCPClient extends MCPClient {
         fetch(this.sandboxUrl + '/call-tool', {
           method: 'POST',
           body: JSON.stringify(bodyToSend),
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: SANDBOX_HEADERS,
         }),
         this.toolCallTimeout,
       );
@@ -330,9 +335,7 @@ export class SandboxMCPClient extends MCPClient {
     const response = await promiseWithTimeout(
       fetch(this.sandboxUrl + '/list-tools', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: SANDBOX_HEADERS,
       }),
       this.listToolsTimeout,
     );
