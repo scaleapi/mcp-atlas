@@ -9,7 +9,7 @@ import { logger } from '../../logger';
  * here matching SandboxToolsConfigSchema. Example:
  *
  *     return [
- *       { image: 'ghcr.io/scaleapi/mcp-atlas:1.2.5',
+ *       { image: 'ghcr.io/scaleapi/mcp-atlas:1.2.8',
  *         disabledTools: ['dangerous_tool_1'] }
  *     ];
  */
