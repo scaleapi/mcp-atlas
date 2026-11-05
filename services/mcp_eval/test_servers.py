@@ -163,8 +163,8 @@ TEST_CALLS: dict[str, tuple[str, dict]] = {
         {"query": "test"},
     ),
     "met-museum": (
-        "met-museum_get-museum-object",
-        {"objectId": 32907},
+        "met-museum_search-museum-objects",
+        {"q": "sunflowers"},
     ),
     "mcp-code-executor": (
         "mcp-code-executor_execute_code",
