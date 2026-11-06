@@ -34,14 +34,16 @@ const migrated = await connect(true);
 try {
   assert.deepEqual((await migrated.listTools()).tools, schemas);
   console.log(JSON.stringify({ check: 'unchanged_tool_schemas', ok: true, tools: schemas.map(t => t.name) }));
-  for (const q of ['sunflowers', 'cat', 'Hercules holding a club', 'zzzz_mcp_no_matching_art_8675309']) {
+  const emptyQuery = 'zzzz_mcp_no_matching_art_8675309';
+  for (const q of ['sunflowers', 'cat', 'Hercules holding a club', emptyQuery]) {
     const result = await migrated.callTool({ name: 'search-museum-objects', arguments: { q } });
     assert.ok(!result.isError, JSON.stringify(result));
     const text = result.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
-    if (text === 'No objects found') {
-      assert.notEqual(q, 'sunflowers'); assert.notEqual(q, 'cat');
+    if (q === emptyQuery) {
+      assert.equal(text, 'No objects found', 'The deliberately unmatched query must return no results');
       console.log(JSON.stringify({ check: 'search', q, total: 0, ok: true })); continue;
     }
+    assert.notEqual(text, 'No objects found', `Expected results for ${q}`);
     const match = text.match(/^Total objects found: (\d+)\nObject IDs: (.*)$/s);
     assert.ok(match, text.slice(0, 200));
     const total = Number(match[1]);

@@ -92,7 +92,7 @@ test('second-page HTTP failure propagates without retries or partial success', a
   }
 });
 
-test('caller cancellation and shared timeout stop the page sequence', async () => {
+test('pre-aborted callers and single-request timeouts are propagated', async () => {
   const controller = new AbortController(); controller.abort();
   let calls = 0;
   const neverCalled = createCompatibleFetch(async () => { calls++; });
@@ -104,6 +104,32 @@ test('caller cancellation and shared timeout stop the page sequence', async () =
     return response({ total: 0, objectIDs: [] });
   }, 5);
   await assert.rejects(timeout(OLD), { name: 'TimeoutError' });
+});
+
+test('all pages share one deadline and timeout prevents requesting a third page', async t => {
+  // Advance a virtual clock inside fetch rather than relying on CI timer timing.
+  // Each page takes 60 ms, below the 100 ms budget, but two pages exceed it.
+  let now = 0;
+  const deadlines = [];
+  t.mock.method(AbortSignal, 'timeout', milliseconds => {
+    const controller = new AbortController();
+    deadlines.push({ controller, expiresAt: now + milliseconds });
+    return controller.signal;
+  });
+  const offsets = [];
+  const fetch = createCompatibleFetch(async (input, init) => {
+    const offset = Number(new URL(input).searchParams.get('offset'));
+    offsets.push(offset);
+    now += 60;
+    for (const { controller, expiresAt } of deadlines) {
+      if (now >= expiresAt) controller.abort(new DOMException('Search deadline exceeded', 'TimeoutError'));
+    }
+    init.signal.throwIfAborted();
+    return response({ total: 1201, objectIDs: ids(offset + 1, Math.min(500, 1201 - offset)) });
+  }, 100);
+  await assert.rejects(fetch(OLD), { name: 'TimeoutError' });
+  assert.deepEqual(offsets, [0, 500]);
+  assert.equal(deadlines.length, 1, 'Pagination must not reset the search deadline');
 });
 
 test('malformed JSON and network errors do not become successful empty results', async () => {
