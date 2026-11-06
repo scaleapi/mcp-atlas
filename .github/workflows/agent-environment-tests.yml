@@ -10,6 +10,8 @@ on:
     paths:
       - "services/agent-environment/src/agent_environment/auth.py"
       - "services/agent-environment/src/agent_environment/main.py"
+      - "services/agent-environment/src/agent_environment/met_search_compat.cjs"
+      - "services/mcp_eval/test_servers.py"
       - "services/agent-environment/src/agent_environment/mcp_server_template.json"
       - "services/agent-environment/dev_scripts/install_mcp_packages.sh"
       - "services/agent-environment/tests/**"
@@ -19,6 +21,8 @@ on:
     paths:
       - "services/agent-environment/src/agent_environment/auth.py"
       - "services/agent-environment/src/agent_environment/main.py"
+      - "services/agent-environment/src/agent_environment/met_search_compat.cjs"
+      - "services/mcp_eval/test_servers.py"
       - "services/agent-environment/src/agent_environment/mcp_server_template.json"
       - "services/agent-environment/dev_scripts/install_mcp_packages.sh"
       - "services/agent-environment/tests/**"
@@ -32,6 +36,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test Met search compatibility (offline)
+        run: node --test services/agent-environment/tests/met_search_compat.test.cjs
       - name: Install test deps
         run: python -m pip install --upgrade pip pytest fastapi httpx
       - name: Run agent-environment tests

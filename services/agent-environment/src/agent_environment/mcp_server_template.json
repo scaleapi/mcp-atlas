@@ -188,7 +188,10 @@
       "command": "npx",
       "args": [
         "metmuseum-mcp@0.9.2"
-      ]
+      ],
+      "env": {
+        "NODE_OPTIONS": "--require=/agent-environment/src/agent_environment/met_search_compat.cjs"
+      }
     },
     "mongodb": {
       "command": "npx",
