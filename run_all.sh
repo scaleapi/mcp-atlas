@@ -11,8 +11,8 @@
 # is in place and tells you the exact command to run if something is missing.
 # Required setup (once):
 #   cp env.template .env          # then set LLM_API_KEY and LLM_BASE_URL
-#   docker pull ghcr.io/scaleapi/mcp-atlas:1.2.5 \
-#     && docker tag ghcr.io/scaleapi/mcp-atlas:1.2.5 agent-environment:latest
+#   docker pull ghcr.io/scaleapi/mcp-atlas:1.2.8 \
+#     && docker tag ghcr.io/scaleapi/mcp-atlas:1.2.8 agent-environment:latest
 #   make install-harness          # npm install for the harness
 #   make install-python           # pip install -r requirements.txt
 #
@@ -80,7 +80,7 @@ SANDBOX_AUTH_TOKEN="$(grep -E '^SANDBOX_AUTH_TOKEN=' .env | tail -1 | cut -d= -f
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 || die \
 "Docker image '$IMAGE' not found. Either:
-   Option A:  docker pull ghcr.io/scaleapi/mcp-atlas:1.2.5 && docker tag ghcr.io/scaleapi/mcp-atlas:1.2.5 $IMAGE
+   Option A:  docker pull ghcr.io/scaleapi/mcp-atlas:1.2.8 && docker tag ghcr.io/scaleapi/mcp-atlas:1.2.8 $IMAGE
    Option B:  make build"
 
 [[ -d services/agent-harness/node_modules ]] || die "Harness deps missing. Run: make install-harness"

@@ -1,7 +1,7 @@
 # Makefile for MCP-Atlas
 
 IMAGE_NAME = agent-environment
-VERSION = 1.2.7
+VERSION = 1.2.8
 GHCR_REPO = ghcr.io/scaleapi/mcp-atlas
 
 .PHONY: build sandbox-token run-docker shell push install-harness run-harness install-python run-eval test

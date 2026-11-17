@@ -66,7 +66,7 @@ SANDBOX_AUTH_TOKEN = os.getenv("SANDBOX_AUTH_TOKEN") or (
     or ""
 )
 DEFAULT_DATASET = "ScaleAI/MCP-Atlas"
-DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.7"
+DEFAULT_SANDBOX_IMAGE = "ghcr.io/scaleapi/mcp-atlas:1.2.8"
 
 
 def _tool_names(items: list[Any]) -> list[str]:
