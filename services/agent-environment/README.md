@@ -54,6 +54,51 @@ ENABLED_SERVERS=calculator,wikipedia,filesystem,git,fetch
 Check `env.template` for all available API key configurations.
 
 ## Implementation details
+
+### Met Museum search migration
+
+The provider retired `/public/collection/v1/search` on October 1, 2026. The
+pinned `metmuseum-mcp@0.9.2` still uses that path, so its process loads
+`src/agent_environment/met_search_compat.cjs` through a Met-only `NODE_OPTIONS`
+entry. Rebuild the container to include the file and updated template. If
+running the template outside the container, adjust the preload's absolute path.
+Do not set this preload globally for other MCP servers.
+
+Only the old search GET is translated to `/v1.1/search`; object and department
+requests, tool names, schemas and text formatting remain unchanged. Results are
+collected sequentially in 500-ID pages, under one 45-second deadline, returning
+the full `{total, objectIDs}` result for queries with at most 10,000 matches.
+Broader queries fail explicitly with instructions to narrow the query: the
+provider does not expose results beyond its 10,000-result window. Failed pages,
+inconsistent totals and duplicate IDs also fail rather than returning a partial
+set as complete. There are no hidden request retries. The functional preflight
+now exercises search instead of only object lookup, which remained available
+during the retirement.
+
+This is an availability repair, **not historical result equivalence**. The new
+backend changes matching and ordering, and broad searches can no longer return
+an unbounded set. Record this environment change when comparing evaluations.
+See the [provider migration guide](https://metmuseum.github.io/#migrating-from-v1search).
+
+Run offline regression tests with Node 20:
+
+```bash
+node --test services/agent-environment/tests/met_search_compat.test.cjs
+```
+
+An optional live check starts the installed pinned stdio server, compares its
+tool schemas with and without the preload, and exercises multi-page searches,
+empty results and the unaffected tools. It needs public network access, but no
+API keys; it is deliberately not run by CI. From the repository root:
+
+```bash
+node services/agent-environment/tests/met_search_live.mjs \
+  "$(npm root -g)/metmuseum-mcp"
+```
+
+Inside the built agent-environment container, use `tests/met_search_live.mjs`
+instead. No `.env` needs to be passed to this test.
+
 This depends on https://github.com/jlowin/fastmcp
 
 By default, caching is enabled. If a request is successful, it will be cached, and subsequent identical requests will return the cached value.
